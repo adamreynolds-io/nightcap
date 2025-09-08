@@ -1,15 +1,28 @@
-# Midnight Template Repository
+# NIGHTCAP
 
-This GitHub repository should be used as a template when creating a new Midnight GitHub repository.
-The template is configured with default repository settings and a set of default files that are expected to exist in all Midnight GitHub repositories.
+Nightcap is [Midnight Foundation](https://github.com/midnightntwrk)'s *proposed* Midnight development environment for professionals. Designed to simplify building, testing, and deploying smart contracts and dApps on the Midnight blockchain. Inspired by Ethereum's [Hardhat](https://hardhat.org/) (and many others), Nightcap aims to provide a flexible environment for Midnight developers with features tailored to the unique aspects of the Midnight network.
+
+## PROPOSED FEATURES
+Nightcap is a work in progress, but here are some of the proposed features:
+
+- **Local Midnight node simulation** for rapid development and testing of Compact Contracts.
+- **Automated contract compilation, deployment, and verification** workflows.
+- **Plugin architecture** to extend functionality for Midnight-specific use cases and support custom plugins.
+- **Scriptable tasks** for common developer operations, including scaffolding TypeScript dApps.
+- **Integration with Midnight's security and compliance tooling.**
+
+## BE PART OF THE JOURNEY
+
+Nightcap is an open source project maintained by the [Midnight Foundation](https://midnightfoundation.io/). We welcome contributions from the community to help improve and expand its capabilities.
+
+## REFERENCE ECOSYSTEMS
+- [Ethereum Hardhat](https://hardhat.org/)
+- [Ethereum Foundry](https://getfoundry.sh/)
+
 
 ### LICENSE
 
 Apache 2.0.
-
-### README.md
-
-Provides a brief description for users and developers who want to understand the purpose, setup, and usage of the repository.
 
 ### SECURITY.md
 
@@ -56,7 +69,7 @@ Facilitates two-way data synchronization, automated workflows and streamline pro
 Include the following Software Package Data Exchange (SPDX) short-form identifier in a comment at the top headers of each source code file.
 
 
- <I>// This file is part of <B>REPLACE WITH REPO-NAME</B>.<BR>
+ <I>// This file is part of <B>NIGHTCAP</B>.<BR>
  // Copyright (C) 2025 Midnight Foundation<BR>
  // SPDX-License-Identifier: Apache-2.0<BR>
  // Licensed under the Apache License, Version 2.0 (the "License");<BR>
