@@ -1,0 +1,99 @@
+## ADDED Requirements
+
+### Requirement: Project Initialization Command
+The system SHALL provide a `nightcap init` command that creates a new Nightcap project with proper structure and configuration.
+
+#### Scenario: Interactive initialization
+- **WHEN** user runs `nightcap init` in empty directory
+- **THEN** prompt for project name, template selection, and configuration options
+- **THEN** generate project files based on selections
+
+#### Scenario: Initialize with template flag
+- **WHEN** user runs `nightcap init --template basic`
+- **THEN** create project using basic template without interactive prompts
+
+#### Scenario: Initialize in non-empty directory
+- **WHEN** user runs `nightcap init` in directory with existing files
+- **THEN** warn about existing files and prompt for confirmation
+- **THEN** proceed only with explicit user consent
+
+#### Scenario: Force initialization
+- **WHEN** user runs `nightcap init --force`
+- **THEN** overwrite existing files without confirmation prompt
+
+### Requirement: Project Templates
+The system SHALL provide multiple project templates for different use cases.
+
+#### Scenario: Basic template
+- **WHEN** user selects "basic" template
+- **THEN** generate minimal project with single sample contract and test
+
+#### Scenario: DApp template
+- **WHEN** user selects "dapp" template
+- **THEN** generate project with contract, tests, and TypeScript dApp scaffold
+- **THEN** include midnight-js integration setup
+
+#### Scenario: Library template
+- **WHEN** user selects "library" template
+- **THEN** generate project structured for publishing reusable contracts
+- **THEN** include package.json configured for npm publishing
+
+### Requirement: Configuration File Generation
+The system SHALL generate a properly configured `nightcap.config.ts` file.
+
+#### Scenario: Generate config with defaults
+- **WHEN** project is initialized
+- **THEN** create `nightcap.config.ts` with local network and default compiler settings
+
+#### Scenario: Include testnet configuration
+- **WHEN** project is initialized
+- **THEN** include commented testnet network configuration as example
+
+### Requirement: Sample Contract Generation
+The system SHALL generate sample Compact contracts appropriate to the selected template.
+
+#### Scenario: Generate counter contract
+- **WHEN** basic or dapp template is selected
+- **THEN** generate `contracts/Counter.compact` with increment/decrement/get operations
+
+#### Scenario: Generate contract with token example
+- **WHEN** dapp template is selected
+- **THEN** generate additional token contract example demonstrating shielded transfers
+
+### Requirement: Test File Generation
+The system SHALL generate sample test files that demonstrate testing patterns.
+
+#### Scenario: Generate basic tests
+- **WHEN** project is initialized
+- **THEN** generate `test/Counter.test.ts` with example test cases
+
+#### Scenario: Tests use local network
+- **WHEN** sample tests are generated
+- **THEN** tests are configured to run against local Nightcap network
+
+### Requirement: Dependency Management
+The system SHALL handle project dependency installation.
+
+#### Scenario: Auto-detect package manager
+- **WHEN** project is initialized
+- **THEN** detect if yarn.lock, pnpm-lock.yaml, or package-lock.json exists in parent directories
+- **THEN** use corresponding package manager, defaulting to npm
+
+#### Scenario: Install dependencies
+- **WHEN** project files are generated
+- **THEN** automatically run package manager install
+
+#### Scenario: Skip installation
+- **WHEN** user runs `nightcap init --skip-install`
+- **THEN** generate files but do not run dependency installation
+
+### Requirement: Project Documentation
+The system SHALL generate helpful documentation files.
+
+#### Scenario: Generate README
+- **WHEN** project is initialized
+- **THEN** generate README.md with project description, quickstart commands, and links to documentation
+
+#### Scenario: Generate gitignore
+- **WHEN** project is initialized
+- **THEN** generate .gitignore excluding node_modules, artifacts, cache, and environment files
