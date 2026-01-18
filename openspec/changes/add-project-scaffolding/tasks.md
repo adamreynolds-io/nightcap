@@ -20,11 +20,11 @@
 - [x] 3.7 Generate README.md with quickstart instructions
 
 ## 4. Dependency Installation
-- [ ] 4.1 Detect package manager (npm, yarn, pnpm)
-- [ ] 4.2 Run dependency installation after scaffolding
-- [ ] 4.3 Add `--skip-install` flag to defer installation
+- [x] 4.1 Detect package manager (npm, yarn, pnpm)
+- [x] 4.2 Run dependency installation after scaffolding
+- [x] 4.3 Add `--skip-install` flag to defer installation
 
 ## 5. Testing
 - [x] 5.1 Unit tests for template generation
 - [x] 5.2 E2E tests for full project initialization
-- [ ] 5.3 Test with different package managers
+- [x] 5.3 Test with different package managers

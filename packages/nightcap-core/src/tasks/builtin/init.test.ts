@@ -303,6 +303,87 @@ describe('init helper functions', () => {
       // spawn should be called with 'npm' for install
       expect(spawn).toHaveBeenCalledWith('npm', ['install'], expect.any(Object));
     });
+
+    it('should detect pnpm from pnpm-lock.yaml', async () => {
+      const { existsSync } = await import('node:fs');
+      const { spawn } = await import('node:child_process');
+
+      vi.mocked(existsSync).mockImplementation((path: unknown) => {
+        if (typeof path === 'string' && path.includes('pnpm-lock.yaml')) {
+          return true;
+        }
+        return false;
+      });
+
+      const context = {
+        config: {},
+        network: { name: 'localnet' },
+        networkName: 'localnet',
+        params: {
+          name: 'my-project',
+          template: 'basic',
+        },
+        verbose: false,
+      };
+
+      await initTask.action(context);
+
+      expect(spawn).toHaveBeenCalledWith('pnpm', ['install'], expect.any(Object));
+    });
+
+    it('should detect yarn from yarn.lock', async () => {
+      const { existsSync } = await import('node:fs');
+      const { spawn } = await import('node:child_process');
+
+      vi.mocked(existsSync).mockImplementation((path: unknown) => {
+        if (typeof path === 'string' && path.includes('yarn.lock')) {
+          return true;
+        }
+        return false;
+      });
+
+      const context = {
+        config: {},
+        network: { name: 'localnet' },
+        networkName: 'localnet',
+        params: {
+          name: 'my-project',
+          template: 'basic',
+        },
+        verbose: false,
+      };
+
+      await initTask.action(context);
+
+      expect(spawn).toHaveBeenCalledWith('yarn', ['install'], expect.any(Object));
+    });
+
+    it('should detect npm from package-lock.json', async () => {
+      const { existsSync } = await import('node:fs');
+      const { spawn } = await import('node:child_process');
+
+      vi.mocked(existsSync).mockImplementation((path: unknown) => {
+        if (typeof path === 'string' && path.includes('package-lock.json')) {
+          return true;
+        }
+        return false;
+      });
+
+      const context = {
+        config: {},
+        network: { name: 'localnet' },
+        networkName: 'localnet',
+        params: {
+          name: 'my-project',
+          template: 'basic',
+        },
+        verbose: false,
+      };
+
+      await initTask.action(context);
+
+      expect(spawn).toHaveBeenCalledWith('npm', ['install'], expect.any(Object));
+    });
   });
 
   describe('directory emptiness check', () => {
