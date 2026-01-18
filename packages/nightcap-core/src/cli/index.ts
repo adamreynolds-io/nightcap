@@ -10,6 +10,7 @@ import { TaskRegistry } from '../tasks/registry.js';
 import { TaskRunner } from '../tasks/runner.js';
 import { registerBuiltinTasks } from '../tasks/builtin/index.js';
 import { logger, LogLevel } from '../utils/logger.js';
+import { generateCompletion, getSupportedShells, type ShellType } from './completion.js';
 import type { NightcapConfig, TaskContext, TaskDefinition } from '../tasks/types.js';
 
 const VERSION = '0.0.1';
@@ -171,6 +172,24 @@ async function main(): Promise<void> {
     .option('--verbose', 'Enable verbose output')
     .option('--quiet', 'Suppress non-essential output')
     .option('--config <path>', 'Path to config file');
+
+  // Add completion command
+  const supportedShells = getSupportedShells();
+  program
+    .command('completion')
+    .description('Generate shell completion script')
+    .argument('<shell>', `Shell type (${supportedShells.join(', ')})`)
+    .action((shell: string) => {
+      if (!supportedShells.includes(shell as ShellType)) {
+        logger.error(`Unsupported shell: ${shell}`);
+        logger.info(`Supported shells: ${supportedShells.join(', ')}`);
+        process.exit(1);
+      }
+
+      const tasks = registry.getAllTasks();
+      const script = generateCompletion(shell as ShellType, tasks);
+      console.log(script);
+    });
 
   // Register all tasks (built-in + custom) as commands
   for (const task of registry.getAllTasks()) {

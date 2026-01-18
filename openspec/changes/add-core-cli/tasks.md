@@ -40,7 +40,7 @@
 - [x] 6.2 Implement `--verbose` and `--quiet` output modes
 - [x] 6.3 Add colored terminal output and progress indicators
 - [x] 6.4 Implement error handling with actionable messages
-- [ ] 6.5 Add shell completion scripts (bash, zsh, fish)
+- [x] 6.5 Add shell completion scripts (bash, zsh, fish)
 
 ## 7. Testing
 - [x] 7.1 Unit tests for task registry
