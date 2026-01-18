@@ -129,3 +129,19 @@ Install (stable): `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midn
 |---------|-----------------|
 | `localnet` | Full stack: node + toolkit + indexer + proof-server |
 | `devnet`, `qanet`, `preview`, `preprod`, `mainnet` | Toolkit only (connects to remote infra) |
+
+## Reference Examples
+
+| Repository | Purpose |
+|------------|---------|
+| [example-counter](https://github.com/midnightntwrk/example-counter) | Reference dApp with Compact contract, CLI tool, and basic project structure |
+| [example-bboard](https://github.com/midnightntwrk/example-bboard) | Bulletin board dApp with Compact contract, CLI, and React web UI |
+| [midnight-js/testkit-js](https://github.com/midnightntwrk/midnight-js/tree/main/testkit-js) | Official Docker stack configuration for local development |
+
+These repositories demonstrate:
+- Valid Compact contract syntax (compatible with compactc 0.25.0+)
+- Standard project structure for Midnight dApps
+- CLI implementation for contract interaction
+- Web UI integration with Lace wallet (example-bboard)
+- Zero-knowledge proof generation patterns
+- Docker stack configuration with compatible versions (testkit-js)

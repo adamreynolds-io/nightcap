@@ -12,7 +12,8 @@ export interface MidnightStackConfig {
     projectName?: string;
     /** Port mappings */
     ports?: {
-        node?: number;
+        nodeRpc?: number;
+        nodeWs?: number;
         indexer?: number;
         proofServer?: number;
     };
@@ -30,18 +31,20 @@ export interface MidnightStackConfig {
 }
 /**
  * Default Midnight Docker images
+ * Note: proof-server uses 'midnightnetwork' org, others use 'midnightntwrk'
  */
 export declare const DEFAULT_IMAGES: {
     readonly node: "midnightntwrk/midnight-node:latest";
-    readonly indexer: "midnightntwrk/midnight-indexer:latest";
-    readonly proofServer: "midnightntwrk/midnight-proof-server:latest";
+    readonly indexer: "midnightntwrk/indexer-standalone:latest";
+    readonly proofServer: "midnightnetwork/proof-server:latest";
 };
 /**
  * Default port mappings
  */
 export declare const DEFAULT_PORTS: {
-    readonly node: 9944;
-    readonly indexer: 8088;
+    readonly nodeRpc: 9944;
+    readonly nodeWs: 9933;
+    readonly indexer: 8080;
     readonly proofServer: 6300;
 };
 /**

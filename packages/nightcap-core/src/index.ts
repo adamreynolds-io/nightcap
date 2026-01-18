@@ -17,3 +17,27 @@ export { validateConfig } from './config/validator.js';
 
 // Re-export logger
 export { logger, LogLevel } from './utils/logger.js';
+
+// Re-export compiler
+export { CompilerManager } from './compiler/index.js';
+export type { CompilerVersion, CompilationResult } from './compiler/index.js';
+
+// Re-export toolkit
+export { Toolkit, ToolkitDockerBridge, ToolkitNativeBridge } from './toolkit/index.js';
+export { DEFAULT_TOOLKIT_IMAGE, TOOLKIT_ERROR_CODES } from './toolkit/index.js';
+export type {
+  ToolkitConfig,
+  ToolkitMode,
+  ToolkitEndpoint,
+  ToolkitCommandOptions,
+  ToolkitResult,
+  ToolkitError,
+  ToolkitErrorCode,
+  DeployInput,
+  DeployResult,
+  CallInput,
+  CallResult,
+  WalletInfo,
+  WalletBalance,
+  TransactionInfo,
+} from './toolkit/index.js';

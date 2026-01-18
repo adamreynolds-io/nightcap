@@ -1,3 +1,9 @@
+## Reference
+
+Reference dApps for template structure:
+- [example-counter](https://github.com/midnightntwrk/example-counter) - Basic dApp with contract and CLI
+- [example-bboard](https://github.com/midnightntwrk/example-bboard) - Full dApp with contract, CLI, and React web UI
+
 ## ADDED Requirements
 
 ### Requirement: Project Initialization Command
@@ -32,6 +38,27 @@ The system SHALL provide multiple project templates for different use cases.
 - **WHEN** user selects "dapp" template
 - **THEN** generate project with contract, tests, and TypeScript dApp scaffold
 - **THEN** include midnight-js integration setup
+- **THEN** prompt for interface selection (CLI, React, or both)
+
+#### Scenario: DApp with CLI interface
+- **WHEN** user selects "dapp" template with CLI interface
+- **THEN** generate `src/cli.ts` with Commander.js scaffold
+- **THEN** include commands for contract interaction (status, increment, decrement)
+- **THEN** add `commander` dependency and `bin` entry in package.json
+
+#### Scenario: DApp with React interface
+- **WHEN** user selects "dapp" template with React interface
+- **THEN** generate `web/` directory with Vite + React setup
+- **THEN** include `web/src/App.tsx` with counter UI and wallet connection placeholder
+- **THEN** add `npm run dev` and `npm run build:web` scripts
+
+#### Scenario: DApp interface flags
+- **WHEN** user runs `nightcap init --template dapp --cli`
+- **THEN** generate dApp with CLI interface without prompting
+- **WHEN** user runs `nightcap init --template dapp --react`
+- **THEN** generate dApp with React interface without prompting
+- **WHEN** user runs `nightcap init --template dapp --cli --react`
+- **THEN** generate dApp with both interfaces without prompting
 
 #### Scenario: Library template
 - **WHEN** user selects "library" template

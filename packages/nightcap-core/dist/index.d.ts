@@ -9,4 +9,6 @@ export { loadConfig } from './config/loader.js';
 export { DEFAULT_NETWORKS } from './config/defaults.js';
 export { validateConfig } from './config/validator.js';
 export { logger, LogLevel } from './utils/logger.js';
+export { CompilerManager } from './compiler/index.js';
+export type { CompilerVersion, CompilationResult } from './compiler/index.js';
 //# sourceMappingURL=index.d.ts.map

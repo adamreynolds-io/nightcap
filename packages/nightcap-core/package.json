@@ -33,6 +33,7 @@
   "author": "Midnight Network",
   "license": "Apache-2.0",
   "dependencies": {
+    "@inquirer/prompts": "^7.2.1",
     "@nightcap/docker-orchestrator": "workspace:*",
     "commander": "^12.1.0"
   },

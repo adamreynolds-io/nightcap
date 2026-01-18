@@ -11,20 +11,57 @@ import type { TaskDefinition } from './types.js';
  */
 export class TaskRegistry {
   private tasks: Map<string, TaskDefinition> = new Map();
-  private overrides: Map<string, Partial<TaskDefinition>> = new Map();
+  private originals: Map<string, TaskDefinition> = new Map();
 
   /**
    * Register a new task or override an existing one
    */
   register(task: TaskDefinition): void {
     if (this.tasks.has(task.name)) {
-      // Store the original as an override target
+      // Store the original for runSuper support
       const existing = this.tasks.get(task.name);
       if (existing) {
-        this.overrides.set(task.name, existing);
+        this.originals.set(task.name, existing);
       }
     }
     this.tasks.set(task.name, task);
+  }
+
+  /**
+   * Register a custom task from config, merging with existing if present
+   */
+  registerCustom(name: string, customTask: Partial<TaskDefinition>): void {
+    const existing = this.tasks.get(name);
+
+    if (existing) {
+      // Store original for runSuper
+      this.originals.set(name, existing);
+
+      // Merge custom task with existing
+      this.tasks.set(name, {
+        ...existing,
+        ...customTask,
+        name, // Ensure name matches
+        action: customTask.action ?? existing.action,
+        params: {
+          ...existing.params,
+          ...customTask.params,
+        },
+      });
+    } else if (customTask.action) {
+      // New custom task - must have an action
+      this.tasks.set(name, {
+        name,
+        description: customTask.description ?? `Custom task: ${name}`,
+        dependencies: customTask.dependencies,
+        params: customTask.params,
+        action: customTask.action,
+      });
+    } else {
+      throw new Error(
+        `Cannot register custom task '${name}': no action provided and no existing task to override`
+      );
+    }
   }
 
   /**
@@ -72,6 +109,11 @@ export class TaskRegistry {
       throw new Error(`Cannot override non-existent task: ${name}`);
     }
 
+    // Store original for runSuper if not already stored
+    if (!this.originals.has(name)) {
+      this.originals.set(name, existing);
+    }
+
     this.tasks.set(name, {
       ...existing,
       ...overrides,
@@ -84,7 +126,14 @@ export class TaskRegistry {
    * Get the original (non-overridden) version of a task
    */
   getOriginal(name: string): TaskDefinition | undefined {
-    return this.overrides.get(name) as TaskDefinition | undefined;
+    return this.originals.get(name);
+  }
+
+  /**
+   * Check if a task has an original version (was overridden)
+   */
+  hasOriginal(name: string): boolean {
+    return this.originals.has(name);
   }
 
   /**

@@ -12,27 +12,59 @@ import type {
 import { DEFAULT_IMAGES, DEFAULT_PORTS } from './types.js';
 
 /**
+ * Extended config with all port options
+ */
+interface StackPorts {
+  nodeRpc?: number;
+  nodeWs?: number;
+  indexer?: number;
+  proofServer?: number;
+}
+
+/**
  * Generate a docker-compose.yml file for the Midnight stack
  */
 export class ComposeGenerator {
   private config: MidnightStackConfig;
+  private ports: StackPorts;
 
   constructor(config: MidnightStackConfig = {}) {
     this.config = config;
+    this.ports = {
+      nodeRpc: DEFAULT_PORTS.nodeRpc,
+      nodeWs: DEFAULT_PORTS.nodeWs,
+      indexer: DEFAULT_PORTS.indexer,
+      proofServer: DEFAULT_PORTS.proofServer,
+      ...config.ports,
+    };
+  }
+
+  /**
+   * Get the project name
+   */
+  getProjectName(): string {
+    return this.config.projectName ?? 'nightcap';
+  }
+
+  /**
+   * Get the network name
+   */
+  getNetworkName(): string {
+    return this.config.networkName ?? `${this.getProjectName()}_network`;
   }
 
   /**
    * Generate the complete compose file structure
    */
   generate(): ComposeFile {
-    const projectName = this.config.projectName ?? 'nightcap';
-    const networkName = this.config.networkName ?? `${projectName}_network`;
+    const projectName = this.getProjectName();
+    const networkName = this.getNetworkName();
 
     return {
       services: {
-        node: this.createNodeService(projectName),
-        indexer: this.createIndexerService(projectName),
-        'proof-server': this.createProofServerService(projectName),
+        node: this.createNodeService(projectName, networkName),
+        indexer: this.createIndexerService(projectName, networkName),
+        'proof-server': this.createProofServerService(projectName, networkName),
       },
       networks: {
         [networkName]: {
@@ -58,27 +90,41 @@ export class ComposeGenerator {
   }
 
   /**
+   * Get service URLs for display
+   */
+  getServiceUrls(): Record<string, string> {
+    return {
+      nodeRpc: `http://localhost:${this.ports.nodeRpc}`,
+      nodeWs: `ws://localhost:${this.ports.nodeWs}`,
+      indexer: `http://localhost:${this.ports.indexer}/api/v1/graphql`,
+      proofServer: `http://localhost:${this.ports.proofServer}`,
+    };
+  }
+
+  /**
    * Create the node service configuration
    */
-  private createNodeService(projectName: string): ComposeService {
+  private createNodeService(projectName: string, networkName: string): ComposeService {
     const image = this.config.images?.node ?? DEFAULT_IMAGES.node;
-    const port = this.config.ports?.node ?? DEFAULT_PORTS.node;
-    const networkName = this.config.networkName ?? `${projectName}_network`;
 
     return {
       image,
       container_name: `${projectName}_node`,
-      ports: [`${port}:9944`],
+      ports: [
+        `${this.ports.nodeRpc}:9944`,
+        `${this.ports.nodeWs}:9933`,
+      ],
       volumes: [
         this.config.volumes?.nodeData ?? `${projectName}_node_data:/data`,
       ],
       environment: {
+        CFG_PRESET: 'dev',
         RUST_LOG: 'info',
       },
       networks: [networkName],
       restart: 'unless-stopped',
       healthcheck: {
-        test: ['CMD', 'curl', '-f', 'http://localhost:9944/health'],
+        test: ['CMD-SHELL', 'curl -sf http://localhost:9944/health || exit 1'],
         interval: '30s',
         timeout: '10s',
         retries: 3,
@@ -90,27 +136,32 @@ export class ComposeGenerator {
   /**
    * Create the indexer service configuration
    */
-  private createIndexerService(projectName: string): ComposeService {
+  private createIndexerService(projectName: string, networkName: string): ComposeService {
     const image = this.config.images?.indexer ?? DEFAULT_IMAGES.indexer;
-    const port = this.config.ports?.indexer ?? DEFAULT_PORTS.indexer;
-    const networkName = this.config.networkName ?? `${projectName}_network`;
 
     return {
       image,
       container_name: `${projectName}_indexer`,
-      ports: [`${port}:8088`],
+      ports: [`${this.ports.indexer}:8088`],
       volumes: [
         this.config.volumes?.indexerData ?? `${projectName}_indexer_data:/data`,
       ],
       environment: {
-        NODE_URL: `http://${projectName}_node:9944`,
-        RUST_LOG: 'info',
+        // Configuration from midnight-js/testkit-js
+        APP__INFRA__NODE__URL: `ws://${projectName}_node:9944`,
+        APP__APPLICATION__NETWORK_ID: 'undeployed',
+        APP__INFRA__STORAGE__PASSWORD: 'indexer',
+        APP__INFRA__PUB_SUB__PASSWORD: 'indexer',
+        APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer',
+        // Development-only secret - NOT for production use
+        APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132',
+        RUST_LOG: 'indexer=debug,chain_indexer=debug,indexer_api=debug,info',
       },
       depends_on: ['node'],
       networks: [networkName],
       restart: 'unless-stopped',
       healthcheck: {
-        test: ['CMD', 'curl', '-f', 'http://localhost:8088/health'],
+        test: ['CMD-SHELL', 'test -f /var/run/indexer-standalone/running || exit 1'],
         interval: '30s',
         timeout: '10s',
         retries: 3,
@@ -122,24 +173,22 @@ export class ComposeGenerator {
   /**
    * Create the proof server service configuration
    */
-  private createProofServerService(projectName: string): ComposeService {
+  private createProofServerService(projectName: string, networkName: string): ComposeService {
     const image = this.config.images?.proofServer ?? DEFAULT_IMAGES.proofServer;
-    const port = this.config.ports?.proofServer ?? DEFAULT_PORTS.proofServer;
-    const networkName = this.config.networkName ?? `${projectName}_network`;
 
     return {
       image,
       container_name: `${projectName}_proof_server`,
-      ports: [`${port}:6300`],
+      ports: [`${this.ports.proofServer}:6300`],
       environment: {
-        NODE_URL: `http://${projectName}_node:9944`,
+        NODE_URL: `ws://${projectName}_node:9933`,
         RUST_LOG: 'info',
       },
       depends_on: ['node'],
       networks: [networkName],
       restart: 'unless-stopped',
       healthcheck: {
-        test: ['CMD', 'curl', '-f', 'http://localhost:6300/health'],
+        test: ['CMD-SHELL', 'curl -sf http://localhost:6300/health || exit 1'],
         interval: '30s',
         timeout: '10s',
         retries: 3,

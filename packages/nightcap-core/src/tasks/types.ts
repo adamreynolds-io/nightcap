@@ -32,7 +32,27 @@ export interface DockerConfig {
     node?: string;
     indexer?: string;
     proofServer?: string;
+    toolkit?: string;
   };
+  /** Port mappings for Docker services */
+  ports?: {
+    nodeRpc?: number;
+    nodeWs?: number;
+    indexer?: number;
+    proofServer?: number;
+  };
+}
+
+/**
+ * Compact compiler configuration
+ */
+export interface CompactConfig {
+  /** Compiler version to use */
+  version?: string;
+  /** Source files or patterns to compile */
+  sources?: string[];
+  /** Files or patterns to exclude */
+  exclude?: string[];
 }
 
 /**
@@ -45,6 +65,8 @@ export interface NightcapConfig {
   networks?: Record<string, NetworkConfig>;
   /** Docker configuration */
   docker?: DockerConfig;
+  /** Compact compiler configuration */
+  compact?: CompactConfig;
   /** Task overrides from plugins */
   tasks?: Record<string, Partial<TaskDefinition>>;
   /** Custom paths */
@@ -86,6 +108,11 @@ export interface TaskContext {
   params: Record<string, unknown>;
   /** Whether verbose output is enabled */
   verbose: boolean;
+  /**
+   * Run the original task when overriding a built-in task.
+   * Only available when the current task overrides another task.
+   */
+  runSuper?: () => Promise<void>;
 }
 
 /**

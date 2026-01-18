@@ -1,3 +1,9 @@
+## Reference
+
+Reference repositories for valid Compact contract syntax (compactc 0.25.0+):
+- [example-counter](https://github.com/midnightntwrk/example-counter) - Simple counter contract
+- [example-bboard](https://github.com/midnightntwrk/example-bboard) - Bulletin board contract with more complex state
+
 ## ADDED Requirements
 
 ### Requirement: Compile Task

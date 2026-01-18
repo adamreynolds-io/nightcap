@@ -8,6 +8,15 @@ import type { ImagePullProgress, DockerOperationResult } from './types.js';
 import { DEFAULT_IMAGES } from './types.js';
 
 /**
+ * Custom image overrides
+ */
+export interface CustomImages {
+  node?: string;
+  indexer?: string;
+  proofServer?: string;
+}
+
+/**
  * Manages Docker images for the Midnight stack
  */
 export class ImageManager {
@@ -28,7 +37,7 @@ export class ImageManager {
    * Check which required images are missing
    */
   async getMissingImages(
-    customImages?: Partial<typeof DEFAULT_IMAGES>
+    customImages?: CustomImages
   ): Promise<string[]> {
     const images = { ...DEFAULT_IMAGES, ...customImages };
     const missing: string[] = [];
@@ -47,7 +56,7 @@ export class ImageManager {
    * Check if all required images are available
    */
   async hasAllImages(
-    customImages?: Partial<typeof DEFAULT_IMAGES>
+    customImages?: CustomImages
   ): Promise<boolean> {
     const missing = await this.getMissingImages(customImages);
     return missing.length === 0;
@@ -76,7 +85,7 @@ export class ImageManager {
    */
   async pullMissingImages(
     onProgress?: (progress: ImagePullProgress) => void,
-    customImages?: Partial<typeof DEFAULT_IMAGES>
+    customImages?: CustomImages
   ): Promise<{ success: boolean; results: Record<string, DockerOperationResult> }> {
     const missing = await this.getMissingImages(customImages);
     const results: Record<string, DockerOperationResult> = {};
@@ -98,7 +107,7 @@ export class ImageManager {
    */
   async pullAllImages(
     onProgress?: (progress: ImagePullProgress) => void,
-    customImages?: Partial<typeof DEFAULT_IMAGES>
+    customImages?: CustomImages
   ): Promise<{ success: boolean; results: Record<string, DockerOperationResult> }> {
     const images = { ...DEFAULT_IMAGES, ...customImages };
     const results: Record<string, DockerOperationResult> = {};
