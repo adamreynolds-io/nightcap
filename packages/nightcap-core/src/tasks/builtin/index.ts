@@ -5,6 +5,7 @@
 
 import type { TaskRegistry } from '../registry.js';
 import { doctorTask } from './doctor.js';
+import { initTask } from './init.js';
 import {
   nodeTask,
   nodeStopTask,
@@ -17,6 +18,9 @@ import {
  * Register all built-in tasks with the registry
  */
 export function registerBuiltinTasks(registry: TaskRegistry): void {
+  // Project tasks
+  registry.register(initTask);
+
   // Diagnostic tasks
   registry.register(doctorTask);
 
