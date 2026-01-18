@@ -7,13 +7,14 @@ import { existsSync, readdirSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join, dirname, basename } from 'node:path';
 import { spawn } from 'node:child_process';
-import { input, select, confirm } from '@inquirer/prompts';
+import { input, select, confirm, checkbox } from '@inquirer/prompts';
 import type { TaskDefinition, TaskContext } from '../types.js';
 import { logger } from '../../utils/logger.js';
 import {
   TEMPLATES,
   getTemplateFiles,
   type TemplateType,
+  type DappInterface,
   type ProjectConfig,
 } from '../../templates/index.js';
 
@@ -124,6 +125,16 @@ export const initTask: TaskDefinition = {
       type: 'string',
       description: 'Project name',
     },
+    cli: {
+      type: 'boolean',
+      description: 'Include CLI interface (dapp template)',
+      default: false,
+    },
+    react: {
+      type: 'boolean',
+      description: 'Include React web app (dapp template)',
+      default: false,
+    },
   },
 
   async action(context: TaskContext): Promise<void> {
@@ -151,9 +162,14 @@ export const initTask: TaskDefinition = {
 
     if (context.params['template'] && context.params['name']) {
       // Non-interactive mode
+      const interfaces: DappInterface[] = [];
+      if (context.params['cli'] === true) interfaces.push('cli');
+      if (context.params['react'] === true) interfaces.push('react');
+
       config = {
         name: context.params['name'] as string,
         template: context.params['template'] as TemplateType,
+        interfaces: interfaces.length > 0 ? interfaces : undefined,
       };
     } else {
       // Interactive mode
@@ -177,6 +193,29 @@ export const initTask: TaskDefinition = {
         })),
       });
 
+      // Ask for interfaces if dapp template
+      let interfaces: DappInterface[] | undefined;
+      if (template === 'dapp') {
+        // Check if interfaces were provided via CLI flags
+        const cliFlag = context.params['cli'] === true;
+        const reactFlag = context.params['react'] === true;
+
+        if (cliFlag || reactFlag) {
+          interfaces = [];
+          if (cliFlag) interfaces.push('cli');
+          if (reactFlag) interfaces.push('react');
+        } else {
+          // Interactive selection
+          interfaces = await checkbox({
+            message: 'What interfaces do you want?',
+            choices: [
+              { name: 'CLI tool', value: 'cli' as DappInterface },
+              { name: 'React web app', value: 'react' as DappInterface },
+            ],
+          });
+        }
+      }
+
       const description = await input({
         message: 'Project description (optional):',
         default: '',
@@ -186,6 +225,7 @@ export const initTask: TaskDefinition = {
         name,
         template,
         description: description || undefined,
+        interfaces,
       };
     }
 

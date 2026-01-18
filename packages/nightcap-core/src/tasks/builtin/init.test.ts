@@ -273,6 +273,90 @@ describe('initTask', () => {
       // Should have created files
       expect(writeFile).toHaveBeenCalled();
     });
+
+    it('should create CLI files when --cli flag is provided', async () => {
+      const { writeFile } = await import('node:fs/promises');
+
+      const context = {
+        config: {},
+        network: { name: 'localnet' },
+        networkName: 'localnet',
+        params: {
+          name: 'my-dapp',
+          template: 'dapp',
+          cli: true,
+          'skip-install': true,
+        },
+        verbose: false,
+      };
+
+      await initTask.action(context);
+
+      // Should have created CLI file
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('src/cli.ts'),
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should create React files when --react flag is provided', async () => {
+      const { writeFile } = await import('node:fs/promises');
+
+      const context = {
+        config: {},
+        network: { name: 'localnet' },
+        networkName: 'localnet',
+        params: {
+          name: 'my-dapp',
+          template: 'dapp',
+          react: true,
+          'skip-install': true,
+        },
+        verbose: false,
+      };
+
+      await initTask.action(context);
+
+      // Should have created React files
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('web/src/App.tsx'),
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should create both CLI and React files when both flags provided', async () => {
+      const { writeFile } = await import('node:fs/promises');
+
+      const context = {
+        config: {},
+        network: { name: 'localnet' },
+        networkName: 'localnet',
+        params: {
+          name: 'my-dapp',
+          template: 'dapp',
+          cli: true,
+          react: true,
+          'skip-install': true,
+        },
+        verbose: false,
+      };
+
+      await initTask.action(context);
+
+      // Should have created both CLI and React files
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('src/cli.ts'),
+        expect.any(String),
+        'utf8'
+      );
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('web/src/App.tsx'),
+        expect.any(String),
+        'utf8'
+      );
+    });
   });
 });
 

@@ -15,6 +15,8 @@ import {
   generateReadme,
   generateDappFiles,
   generateLibraryFiles,
+  generateCliFiles,
+  generateReactFiles,
   getTemplateFiles,
   type ProjectConfig,
 } from './index.js';
@@ -256,5 +258,127 @@ describe('getTemplateFiles', () => {
     const paths = files.map((f) => f.path);
     expect(paths).toContain('artifacts/.gitkeep');
     expect(paths).toContain('deploy/.gitkeep');
+  });
+
+  it('should include CLI files when cli interface selected', () => {
+    const config: ProjectConfig = { name: 'test', template: 'dapp', interfaces: ['cli'] };
+    const files = getTemplateFiles(config);
+
+    const paths = files.map((f) => f.path);
+    expect(paths).toContain('src/cli.ts');
+  });
+
+  it('should include React files when react interface selected', () => {
+    const config: ProjectConfig = { name: 'test', template: 'dapp', interfaces: ['react'] };
+    const files = getTemplateFiles(config);
+
+    const paths = files.map((f) => f.path);
+    expect(paths).toContain('web/package.json');
+    expect(paths).toContain('web/src/App.tsx');
+    expect(paths).toContain('web/src/main.tsx');
+  });
+
+  it('should include both CLI and React files when both selected', () => {
+    const config: ProjectConfig = { name: 'test', template: 'dapp', interfaces: ['cli', 'react'] };
+    const files = getTemplateFiles(config);
+
+    const paths = files.map((f) => f.path);
+    expect(paths).toContain('src/cli.ts');
+    expect(paths).toContain('web/package.json');
+  });
+});
+
+describe('generateCliFiles', () => {
+  it('should generate src/cli.ts with Commander.js', () => {
+    const config: ProjectConfig = { name: 'my-cli', template: 'dapp' };
+    const files = generateCliFiles(config);
+
+    const cliFile = files.find((f) => f.path === 'src/cli.ts');
+    expect(cliFile).toBeDefined();
+    expect(cliFile?.content).toContain("import { Command } from 'commander'");
+    expect(cliFile?.content).toContain('.name(\'my-cli\')');
+    expect(cliFile?.content).toContain('.command(\'status\')');
+    expect(cliFile?.content).toContain('.command(\'increment\')');
+    expect(cliFile?.content).toContain('.command(\'decrement\')');
+  });
+});
+
+describe('generateReactFiles', () => {
+  it('should generate web/package.json with React deps', () => {
+    const config: ProjectConfig = { name: 'my-app', template: 'dapp' };
+    const files = generateReactFiles(config);
+
+    const pkgFile = files.find((f) => f.path === 'web/package.json');
+    expect(pkgFile).toBeDefined();
+    const pkg = JSON.parse(pkgFile!.content);
+    expect(pkg.name).toBe('my-app-web');
+    expect(pkg.dependencies.react).toBeDefined();
+    expect(pkg.dependencies['react-dom']).toBeDefined();
+    expect(pkg.devDependencies.vite).toBeDefined();
+  });
+
+  it('should generate web/src/App.tsx with counter UI', () => {
+    const config: ProjectConfig = { name: 'my-app', template: 'dapp' };
+    const files = generateReactFiles(config);
+
+    const appFile = files.find((f) => f.path === 'web/src/App.tsx');
+    expect(appFile).toBeDefined();
+    expect(appFile?.content).toContain('useState');
+    expect(appFile?.content).toContain('handleIncrement');
+    expect(appFile?.content).toContain('handleDecrement');
+    expect(appFile?.content).toContain('Connect Wallet');
+  });
+
+  it('should generate web/vite.config.ts', () => {
+    const config: ProjectConfig = { name: 'my-app', template: 'dapp' };
+    const files = generateReactFiles(config);
+
+    const viteConfig = files.find((f) => f.path === 'web/vite.config.ts');
+    expect(viteConfig).toBeDefined();
+    expect(viteConfig?.content).toContain("import react from '@vitejs/plugin-react'");
+    expect(viteConfig?.content).toContain('port: 3000');
+  });
+
+  it('should generate web/index.html', () => {
+    const config: ProjectConfig = { name: 'my-app', template: 'dapp' };
+    const files = generateReactFiles(config);
+
+    const htmlFile = files.find((f) => f.path === 'web/index.html');
+    expect(htmlFile).toBeDefined();
+    expect(htmlFile?.content).toContain('<title>my-app</title>');
+    expect(htmlFile?.content).toContain('/src/main.tsx');
+  });
+});
+
+describe('generatePackageJson with interfaces', () => {
+  it('should add CLI dependencies when cli interface selected', () => {
+    const config: ProjectConfig = { name: 'my-dapp', template: 'dapp', interfaces: ['cli'] };
+    const result = generatePackageJson(config);
+    const pkg = JSON.parse(result);
+
+    expect(pkg.dependencies.commander).toBeDefined();
+    expect(pkg.bin).toBeDefined();
+    expect(pkg.bin['my-dapp']).toBe('./dist/cli.js');
+    expect(pkg.scripts.cli).toBe('node ./dist/cli.js');
+  });
+
+  it('should add React scripts when react interface selected', () => {
+    const config: ProjectConfig = { name: 'my-dapp', template: 'dapp', interfaces: ['react'] };
+    const result = generatePackageJson(config);
+    const pkg = JSON.parse(result);
+
+    expect(pkg.scripts.dev).toBe('cd web && npm run dev');
+    expect(pkg.scripts['build:web']).toBe('cd web && npm run build');
+  });
+
+  it('should add both CLI and React config when both selected', () => {
+    const config: ProjectConfig = { name: 'my-dapp', template: 'dapp', interfaces: ['cli', 'react'] };
+    const result = generatePackageJson(config);
+    const pkg = JSON.parse(result);
+
+    expect(pkg.dependencies.commander).toBeDefined();
+    expect(pkg.bin).toBeDefined();
+    expect(pkg.scripts.dev).toBeDefined();
+    expect(pkg.scripts['build:web']).toBeDefined();
   });
 });
