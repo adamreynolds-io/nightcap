@@ -1,6 +1,8 @@
 ## Reference
 
-See [example-counter](https://github.com/midnightntwrk/example-counter) as the reference dApp structure for the "dapp" template.
+Reference dApps for template structure:
+- [example-counter](https://github.com/midnightntwrk/example-counter) - Basic dApp with contract and CLI
+- [example-bboard](https://github.com/midnightntwrk/example-bboard) - Full dApp with contract, CLI, and React web UI
 
 ## ADDED Requirements
 
