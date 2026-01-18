@@ -1,0 +1,26 @@
+{
+  "name": "nightcap",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A development environment for Midnight blockchain",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "clean": "pnpm -r clean",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  },
+  "keywords": [
+    "midnight",
+    "blockchain",
+    "development",
+    "cli"
+  ],
+  "author": "Midnight Network",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@9.15.4"
+}
