@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import type { TaskDefinition, TaskContext } from '../types.js';
@@ -71,28 +71,10 @@ function checkNodeVersion(): CheckResult {
  * Check Docker availability and version
  */
 function checkDocker(): CheckResult {
-  try {
-    const version = execSync('docker --version', { encoding: 'utf8' }).trim();
-    const versionMatch = /Docker version ([\d.]+)/.exec(version);
+  // Use spawnSync with array args to avoid command injection
+  const versionResult = spawnSync('docker', ['--version'], { encoding: 'utf8' });
 
-    // Check if Docker daemon is running
-    try {
-      execSync('docker info', { encoding: 'utf8', stdio: 'pipe' });
-    } catch {
-      return {
-        name: 'Docker',
-        status: 'error',
-        message: 'Docker is installed but daemon is not running',
-        details: 'Start Docker Desktop or the Docker daemon',
-      };
-    }
-
-    return {
-      name: 'Docker',
-      status: 'ok',
-      message: `Docker ${versionMatch?.[1] ?? 'unknown version'} installed and running`,
-    };
-  } catch {
+  if (versionResult.status !== 0 || versionResult.error) {
     return {
       name: 'Docker',
       status: 'warn',
@@ -100,6 +82,26 @@ function checkDocker(): CheckResult {
       details: 'Install Docker to use local development features: https://docs.docker.com/get-docker/',
     };
   }
+
+  const version = versionResult.stdout.trim();
+  const versionMatch = /Docker version ([\d.]+)/.exec(version);
+
+  // Check if Docker daemon is running
+  const infoResult = spawnSync('docker', ['info'], { encoding: 'utf8', stdio: 'pipe' });
+  if (infoResult.status !== 0) {
+    return {
+      name: 'Docker',
+      status: 'error',
+      message: 'Docker is installed but daemon is not running',
+      details: 'Start Docker Desktop or the Docker daemon',
+    };
+  }
+
+  return {
+    name: 'Docker',
+    status: 'ok',
+    message: `Docker ${versionMatch?.[1] ?? 'unknown version'} installed and running`,
+  };
 }
 
 /**
@@ -112,10 +114,9 @@ function checkDockerImages(): CheckResult {
     'midnightntwrk/midnight-proof-server',
   ];
 
-  try {
-    // First check if Docker is available
-    execSync('docker info', { encoding: 'utf8', stdio: 'pipe' });
-  } catch {
+  // First check if Docker is available - use spawnSync to avoid command injection
+  const dockerCheck = spawnSync('docker', ['info'], { encoding: 'utf8', stdio: 'pipe' });
+  if (dockerCheck.status !== 0) {
     return {
       name: 'Docker Images',
       status: 'warn',
@@ -127,13 +128,14 @@ function checkDockerImages(): CheckResult {
   const presentImages: string[] = [];
 
   for (const image of requiredImages) {
-    try {
-      execSync(`docker image inspect ${image}:latest`, {
-        encoding: 'utf8',
-        stdio: 'pipe',
-      });
+    // Use spawnSync with array args to avoid command injection
+    const result = spawnSync('docker', ['image', 'inspect', `${image}:latest`], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (result.status === 0) {
       presentImages.push(image);
-    } catch {
+    } else {
       missingImages.push(image);
     }
   }
@@ -266,21 +268,21 @@ async function checkRegistryConnectivity(): Promise<CheckResult> {
  * Check pnpm availability
  */
 function checkPnpm(): CheckResult {
-  try {
-    const version = execSync('pnpm --version', { encoding: 'utf8' }).trim();
+  // Use spawnSync with array args to avoid command injection
+  const result = spawnSync('pnpm', ['--version'], { encoding: 'utf8' });
+  if (result.status === 0 && result.stdout) {
     return {
       name: 'pnpm',
       status: 'ok',
-      message: `pnpm ${version} installed`,
-    };
-  } catch {
-    return {
-      name: 'pnpm',
-      status: 'warn',
-      message: 'pnpm is not installed',
-      details: 'Install pnpm for best experience: npm install -g pnpm',
+      message: `pnpm ${result.stdout.trim()} installed`,
     };
   }
+  return {
+    name: 'pnpm',
+    status: 'warn',
+    message: 'pnpm is not installed',
+    details: 'Install pnpm for best experience: npm install -g pnpm',
+  };
 }
 
 /**

@@ -6,6 +6,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { homedir } from 'node:os';
 import type {
   ToolkitConfig,
   ToolkitCommandOptions,
@@ -26,6 +27,52 @@ const DEFAULT_TIMEOUT = 5 * 60 * 1000;
  * Docker network name for local stack
  */
 const DOCKER_NETWORK = 'nightcap_default';
+
+/**
+ * Directories that should never be mounted into containers.
+ * These are sensitive system directories that could lead to
+ * privilege escalation or data exposure if a container is compromised.
+ */
+const FORBIDDEN_MOUNT_PATHS = [
+  '/',
+  '/etc',
+  '/var',
+  '/usr',
+  '/bin',
+  '/sbin',
+  '/lib',
+  '/root',
+  '/boot',
+  '/dev',
+  '/proc',
+  '/sys',
+];
+
+/**
+ * Validate that a working directory is safe to mount into a container.
+ * Prevents mounting sensitive system directories.
+ */
+function validateWorkDir(workDir: string): void {
+  const resolved = resolve(workDir);
+
+  // Check against forbidden paths
+  for (const forbidden of FORBIDDEN_MOUNT_PATHS) {
+    if (resolved === forbidden || resolved === resolve(forbidden)) {
+      throw new Error(
+        `Security: Cannot mount '${workDir}' into container. ` +
+          `Mounting system directories is not allowed.`
+      );
+    }
+  }
+
+  // Warn if mounting home directory directly (not a subdirectory)
+  const home = homedir();
+  if (resolved === home) {
+    logger.warn(
+      `Warning: Mounting home directory directly. Consider using a project subdirectory instead.`
+    );
+  }
+}
 
 /**
  * Bridge for executing toolkit commands via Docker
@@ -220,6 +267,10 @@ export class ToolkitDockerBridge {
 
     // Add working directory mount (current directory)
     const workDir = this.config.workDir ?? process.cwd();
+
+    // Security: Validate workDir before mounting
+    validateWorkDir(workDir);
+
     args.push('-v', `${workDir}:/workspace`);
     args.push('-w', '/workspace');
 

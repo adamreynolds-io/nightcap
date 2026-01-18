@@ -299,9 +299,35 @@ export const nodeExecTask: TaskDefinition = {
 };
 
 /**
- * Parse a command string into parts, respecting quoted strings
+ * Shell metacharacters that indicate shell features not supported in container exec
+ */
+const SHELL_METACHARACTERS = ['|', '>', '<', '&', ';', '$', '`', '(', ')', '{', '}'];
+
+/**
+ * Parse a command string into parts, respecting quoted strings.
+ *
+ * SECURITY NOTE: This is a simple parser that does NOT support:
+ * - Backslash escaping within quoted strings
+ * - Shell features (pipes, redirects, command substitution, etc.)
+ * - Environment variable expansion
+ *
+ * Commands are executed directly via Docker exec without a shell,
+ * which prevents shell injection but also means shell features won't work.
+ *
+ * @throws Error if shell metacharacters are detected (to prevent user confusion)
  */
 function parseCommand(command: string): string[] {
+  // Warn users if they're trying to use shell features that won't work
+  for (const char of SHELL_METACHARACTERS) {
+    if (command.includes(char)) {
+      throw new Error(
+        `Shell metacharacter '${char}' detected in command. ` +
+          `Shell features (pipes, redirects, etc.) are not supported. ` +
+          `Commands are executed directly in the container without a shell.`
+      );
+    }
+  }
+
   const parts: string[] = [];
   let current = '';
   let inQuotes = false;

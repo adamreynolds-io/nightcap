@@ -20,22 +20,23 @@ vi.mock('../../utils/logger.js', () => ({
   },
 }));
 
-// Mock child_process
+// Mock child_process - using spawnSync for security
 vi.mock('node:child_process', () => ({
-  execSync: vi.fn((cmd: string) => {
-    if (cmd === 'docker --version') {
-      return 'Docker version 24.0.0, build abc123';
+  spawnSync: vi.fn((cmd: string, args: string[]) => {
+    if (cmd === 'docker' && args[0] === '--version') {
+      return { status: 0, stdout: 'Docker version 24.0.0, build abc123', stderr: '' };
     }
-    if (cmd === 'docker info') {
-      return 'Containers: 5\nRunning: 2';
+    if (cmd === 'docker' && args[0] === 'info') {
+      return { status: 0, stdout: 'Containers: 5\nRunning: 2', stderr: '' };
     }
-    if (cmd === 'pnpm --version') {
-      return '8.15.0';
+    if (cmd === 'docker' && args[0] === 'image' && args[1] === 'inspect') {
+      // Images not found
+      return { status: 1, stdout: '', stderr: 'No such image' };
     }
-    if (cmd.includes('docker image inspect')) {
-      throw new Error('No such image');
+    if (cmd === 'pnpm' && args[0] === '--version') {
+      return { status: 0, stdout: '8.15.0', stderr: '' };
     }
-    throw new Error(`Unknown command: ${cmd}`);
+    return { status: 1, stdout: '', stderr: `Unknown command: ${cmd} ${args.join(' ')}` };
   }),
 }));
 

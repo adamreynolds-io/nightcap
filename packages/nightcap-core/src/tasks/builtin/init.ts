@@ -5,7 +5,7 @@
 
 import { existsSync, readdirSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname, basename } from 'node:path';
+import { join, dirname, basename, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { input, select, confirm, checkbox } from '@inquirer/prompts';
 import type { TaskDefinition, TaskContext } from '../types.js';
@@ -78,8 +78,19 @@ async function writeFiles(
   const written: string[] = [];
   const skipped: string[] = [];
 
+  // Resolve the target directory to an absolute path for security validation
+  const resolvedDir = resolve(dir);
+
   for (const file of files) {
     const fullPath = join(dir, file.path);
+    const resolvedPath = resolve(fullPath);
+
+    // Security: Prevent path traversal attacks
+    // Ensure the resolved path stays within the target directory
+    if (!resolvedPath.startsWith(resolvedDir + '/') && resolvedPath !== resolvedDir) {
+      throw new Error(`Path traversal attempt detected: ${file.path}`);
+    }
+
     const fileDir = dirname(fullPath);
 
     // Create directory if needed

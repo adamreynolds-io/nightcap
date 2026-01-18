@@ -7,7 +7,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { mkdir, chmod, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir, platform, arch } from 'node:os';
-import { execSync, spawn } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { logger } from '../utils/logger.js';
@@ -157,11 +157,10 @@ export class CompilerManager {
   findInPath(): string | null {
     // Try compactc first (our managed name), then compact (official name)
     for (const name of ['compactc', 'compact']) {
-      try {
-        const result = execSync(`which ${name}`, { encoding: 'utf8' }).trim();
-        if (result) return result;
-      } catch {
-        // Continue to next
+      // Use spawnSync with array args to avoid command injection
+      const result = spawnSync('which', [name], { encoding: 'utf8' });
+      if (result.status === 0 && result.stdout.trim()) {
+        return result.stdout.trim();
       }
     }
     return null;
@@ -171,14 +170,15 @@ export class CompilerManager {
    * Get version of a compiler binary
    */
   getVersion(compilerPath: string): string | null {
-    try {
-      const result = execSync(`"${compilerPath}" --version`, { encoding: 'utf8' }).trim();
-      // Extract version number (e.g., "compact 0.3.0" -> "0.3.0")
-      const match = /(\d+\.\d+\.\d+(?:-[\w.]+)?)/.exec(result);
-      return match ? match[1] ?? null : null;
-    } catch {
+    // Use spawnSync with array args to avoid command injection
+    const result = spawnSync(compilerPath, ['--version'], { encoding: 'utf8' });
+    if (result.status !== 0 || result.error) {
       return null;
     }
+    const output = result.stdout.trim();
+    // Extract version number (e.g., "compact 0.3.0" -> "0.3.0")
+    const match = /(\d+\.\d+\.\d+(?:-[\w.]+)?)/.exec(output);
+    return match ? match[1] ?? null : null;
   }
 
   /**
@@ -403,13 +403,14 @@ export class CompilerManager {
    * Detect if this is the new-style compiler (with subcommands) or old-style
    */
   private isNewStyleCompiler(compilerPath: string): boolean {
-    try {
-      const result = execSync(`"${compilerPath}" --help`, { encoding: 'utf8' });
-      // New compiler has "Commands:" section, old one has "Usage: compactc.bin"
-      return result.includes('Commands:') && result.includes('compile');
-    } catch {
+    // Use spawnSync with array args to avoid command injection
+    const result = spawnSync(compilerPath, ['--help'], { encoding: 'utf8' });
+    if (result.status !== 0 || result.error) {
       return false;
     }
+    const output = result.stdout;
+    // New compiler has "Commands:" section, old one has "Usage: compactc.bin"
+    return output.includes('Commands:') && output.includes('compile');
   }
 
   /**
