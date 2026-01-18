@@ -17,3 +17,7 @@ export { validateConfig } from './config/validator.js';
 
 // Re-export logger
 export { logger, LogLevel } from './utils/logger.js';
+
+// Re-export compiler
+export { CompilerManager } from './compiler/index.js';
+export type { CompilerVersion, CompilationResult } from './compiler/index.js';
