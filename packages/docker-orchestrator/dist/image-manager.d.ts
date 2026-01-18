@@ -4,7 +4,14 @@
  */
 import type { DockerClient } from './docker-client.js';
 import type { ImagePullProgress, DockerOperationResult } from './types.js';
-import { DEFAULT_IMAGES } from './types.js';
+/**
+ * Custom image overrides
+ */
+export interface CustomImages {
+    node?: string;
+    indexer?: string;
+    proofServer?: string;
+}
 /**
  * Manages Docker images for the Midnight stack
  */
@@ -18,11 +25,11 @@ export declare class ImageManager {
     /**
      * Check which required images are missing
      */
-    getMissingImages(customImages?: Partial<typeof DEFAULT_IMAGES>): Promise<string[]>;
+    getMissingImages(customImages?: CustomImages): Promise<string[]>;
     /**
      * Check if all required images are available
      */
-    hasAllImages(customImages?: Partial<typeof DEFAULT_IMAGES>): Promise<boolean>;
+    hasAllImages(customImages?: CustomImages): Promise<boolean>;
     /**
      * Pull a single image with progress reporting
      */
@@ -30,14 +37,14 @@ export declare class ImageManager {
     /**
      * Pull all missing images
      */
-    pullMissingImages(onProgress?: (progress: ImagePullProgress) => void, customImages?: Partial<typeof DEFAULT_IMAGES>): Promise<{
+    pullMissingImages(onProgress?: (progress: ImagePullProgress) => void, customImages?: CustomImages): Promise<{
         success: boolean;
         results: Record<string, DockerOperationResult>;
     }>;
     /**
      * Pull all images (including existing ones to update)
      */
-    pullAllImages(onProgress?: (progress: ImagePullProgress) => void, customImages?: Partial<typeof DEFAULT_IMAGES>): Promise<{
+    pullAllImages(onProgress?: (progress: ImagePullProgress) => void, customImages?: CustomImages): Promise<{
         success: boolean;
         results: Record<string, DockerOperationResult>;
     }>;

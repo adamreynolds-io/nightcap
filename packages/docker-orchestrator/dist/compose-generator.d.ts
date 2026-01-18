@@ -8,7 +8,16 @@ import type { MidnightStackConfig, ComposeFile } from './types.js';
  */
 export declare class ComposeGenerator {
     private config;
+    private ports;
     constructor(config?: MidnightStackConfig);
+    /**
+     * Get the project name
+     */
+    getProjectName(): string;
+    /**
+     * Get the network name
+     */
+    getNetworkName(): string;
     /**
      * Generate the complete compose file structure
      */
@@ -17,6 +26,10 @@ export declare class ComposeGenerator {
      * Generate compose file as YAML string
      */
     toYaml(): string;
+    /**
+     * Get service URLs for display
+     */
+    getServiceUrls(): Record<string, string>;
     /**
      * Create the node service configuration
      */

@@ -31,6 +31,24 @@ export interface DockerConfig {
         indexer?: string;
         proofServer?: string;
     };
+    /** Port mappings for Docker services */
+    ports?: {
+        nodeRpc?: number;
+        nodeWs?: number;
+        indexer?: number;
+        proofServer?: number;
+    };
+}
+/**
+ * Compact compiler configuration
+ */
+export interface CompactConfig {
+    /** Compiler version to use */
+    version?: string;
+    /** Source files or patterns to compile */
+    sources?: string[];
+    /** Files or patterns to exclude */
+    exclude?: string[];
 }
 /**
  * Main Nightcap configuration
@@ -42,6 +60,8 @@ export interface NightcapConfig {
     networks?: Record<string, NetworkConfig>;
     /** Docker configuration */
     docker?: DockerConfig;
+    /** Compact compiler configuration */
+    compact?: CompactConfig;
     /** Task overrides from plugins */
     tasks?: Record<string, Partial<TaskDefinition>>;
     /** Custom paths */
