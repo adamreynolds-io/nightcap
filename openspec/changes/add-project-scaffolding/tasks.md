@@ -24,7 +24,17 @@
 - [x] 4.2 Run dependency installation after scaffolding
 - [x] 4.3 Add `--skip-install` flag to defer installation
 
-## 5. Testing
-- [x] 5.1 Unit tests for template generation
-- [x] 5.2 E2E tests for full project initialization
-- [x] 5.3 Test with different package managers
+## 5. DApp Interface Options
+- [x] 5.1 Add interactive checkbox prompt for interface selection
+- [x] 5.2 Add `--cli` flag for CLI interface generation
+- [x] 5.3 Add `--react` flag for React interface generation
+- [x] 5.4 Generate CLI scaffold with Commander.js
+- [x] 5.5 Generate React scaffold with Vite + React
+- [x] 5.6 Update package.json with interface-specific dependencies
+
+## 6. Testing
+- [x] 6.1 Unit tests for template generation
+- [x] 6.2 E2E tests for full project initialization
+- [x] 6.3 Test with different package managers
+- [x] 6.4 Test CLI interface generation
+- [x] 6.5 Test React interface generation
