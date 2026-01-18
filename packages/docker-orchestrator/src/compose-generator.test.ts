@@ -100,7 +100,7 @@ describe('ComposeGenerator', () => {
         `${DEFAULT_PORTS.nodeWs}:9933`
       );
       expect(compose.services.indexer.ports).toContain(
-        `${DEFAULT_PORTS.indexer}:8080`
+        `${DEFAULT_PORTS.indexer}:8088`
       );
       expect(compose.services['proof-server'].ports).toContain(
         `${DEFAULT_PORTS.proofServer}:6300`
@@ -117,7 +117,7 @@ describe('ComposeGenerator', () => {
       const compose = generator.generate();
 
       expect(compose.services.node.ports).toContain('19944:9944');
-      expect(compose.services.indexer.ports).toContain('18080:8080');
+      expect(compose.services.indexer.ports).toContain('18080:8088');
     });
 
     it('should create network configuration', () => {
@@ -214,10 +214,11 @@ describe('ComposeGenerator', () => {
 });
 
 describe('DEFAULT_IMAGES', () => {
-  it('should have expected image names', () => {
-    expect(DEFAULT_IMAGES.node).toBe('midnightntwrk/midnight-node:latest');
-    expect(DEFAULT_IMAGES.indexer).toBe('midnightntwrk/indexer-standalone:latest');
-    expect(DEFAULT_IMAGES.proofServer).toBe('midnightnetwork/proof-server:latest');
+  it('should have expected image names from testkit-js', () => {
+    // Images from official midnight-js/testkit-js compose.yml
+    expect(DEFAULT_IMAGES.node).toBe('ghcr.io/midnight-ntwrk/midnight-node:0.20.0-alpha.1');
+    expect(DEFAULT_IMAGES.indexer).toBe('ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-alpha.22');
+    expect(DEFAULT_IMAGES.proofServer).toBe('ghcr.io/midnight-ntwrk/proof-server:7.0.0-alpha.1');
   });
 });
 

@@ -33,12 +33,13 @@ export interface MidnightStackConfig {
 
 /**
  * Default Midnight Docker images
- * Note: proof-server uses 'midnightnetwork' org, others use 'midnightntwrk'
+ * Versions from official midnight-js/testkit-js compose.yml
+ * @see https://github.com/midnightntwrk/midnight-js/tree/main/testkit-js
  */
 export const DEFAULT_IMAGES = {
-  node: 'midnightntwrk/midnight-node:latest',
-  indexer: 'midnightntwrk/indexer-standalone:latest',
-  proofServer: 'midnightnetwork/proof-server:latest',
+  node: 'ghcr.io/midnight-ntwrk/midnight-node:0.20.0-alpha.1',
+  indexer: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-alpha.22',
+  proofServer: 'ghcr.io/midnight-ntwrk/proof-server:7.0.0-alpha.1',
 } as const;
 
 /**
