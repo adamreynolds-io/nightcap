@@ -4,7 +4,7 @@
 - [x] 1.3 Pull required images with progress display
 - [x] 1.4 Start containers via Docker Compose API
 - [x] 1.5 Display service URLs and account info on startup
-- [ ] 1.6 Implement graceful shutdown on SIGINT/SIGTERM
+- [x] 1.6 Implement graceful shutdown on SIGINT/SIGTERM
 
 ## 2. Docker Stack Configuration
 - [x] 2.1 Configure `midnightntwrk/midnight-node` container (ports 9933, 9944)

@@ -92,6 +92,7 @@ export class ComposeGenerator {
                 this.config.volumes?.nodeData ?? `${projectName}_node_data:/data`,
             ],
             environment: {
+                CFG_PRESET: 'dev',
                 RUST_LOG: 'info',
             },
             networks: [networkName],
@@ -113,19 +114,26 @@ export class ComposeGenerator {
         return {
             image,
             container_name: `${projectName}_indexer`,
-            ports: [`${this.ports.indexer}:8080`],
+            ports: [`${this.ports.indexer}:8088`],
             volumes: [
                 this.config.volumes?.indexerData ?? `${projectName}_indexer_data:/data`,
             ],
             environment: {
-                NODE_URL: `ws://${projectName}_node:9933`,
-                RUST_LOG: 'info',
+                // Configuration from midnight-js/testkit-js
+                APP__INFRA__NODE__URL: `ws://${projectName}_node:9944`,
+                APP__APPLICATION__NETWORK_ID: 'undeployed',
+                APP__INFRA__STORAGE__PASSWORD: 'indexer',
+                APP__INFRA__PUB_SUB__PASSWORD: 'indexer',
+                APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer',
+                // Development-only secret - NOT for production use
+                APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132',
+                RUST_LOG: 'indexer=debug,chain_indexer=debug,indexer_api=debug,info',
             },
             depends_on: ['node'],
             networks: [networkName],
             restart: 'unless-stopped',
             healthcheck: {
-                test: ['CMD-SHELL', 'curl -sf http://localhost:8080/health || exit 1'],
+                test: ['CMD-SHELL', 'test -f /var/run/indexer-standalone/running || exit 1'],
                 interval: '30s',
                 timeout: '10s',
                 retries: 3,

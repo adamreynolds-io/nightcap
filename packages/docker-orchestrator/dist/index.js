@@ -8,5 +8,5 @@ export { ComposeGenerator } from './compose-generator.js';
 export { ImageManager } from './image-manager.js';
 export { StackManager } from './stack-manager.js';
 // Re-export constants
-export { DEFAULT_IMAGES, DEFAULT_PORTS } from './types.js';
+export { DEFAULT_IMAGES, DEFAULT_PORTS, VERSION_SETS, DEFAULT_VERSION_SET, DEFAULT_TOOLKIT_IMAGE, } from './types.js';
 //# sourceMappingURL=index.js.map

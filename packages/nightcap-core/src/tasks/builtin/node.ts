@@ -37,6 +37,56 @@ function formatPullProgress(progress: ImagePullProgress): string {
 }
 
 /**
+ * Set up graceful shutdown handlers for SIGINT and SIGTERM
+ * Returns a cleanup function to remove the handlers
+ */
+function setupShutdownHandlers(stack: StackManager): () => void {
+  let isShuttingDown = false;
+
+  const shutdown = async (signal: string): Promise<void> => {
+    if (isShuttingDown) {
+      logger.warn('Shutdown already in progress...');
+      return;
+    }
+    isShuttingDown = true;
+
+    logger.newline();
+    logger.info(`Received ${signal}, stopping Midnight stack...`);
+
+    try {
+      const result = await stack.stop();
+      if (result.success) {
+        logger.success('Midnight stack stopped gracefully');
+      } else {
+        logger.error(`Failed to stop stack: ${result.error ?? 'Unknown error'}`);
+        process.exit(1);
+      }
+    } catch (error) {
+      logger.error(`Error during shutdown: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    }
+
+    process.exit(0);
+  };
+
+  const sigintHandler = (): void => {
+    void shutdown('SIGINT');
+  };
+  const sigtermHandler = (): void => {
+    void shutdown('SIGTERM');
+  };
+
+  process.on('SIGINT', sigintHandler);
+  process.on('SIGTERM', sigtermHandler);
+
+  // Return cleanup function
+  return () => {
+    process.off('SIGINT', sigintHandler);
+    process.off('SIGTERM', sigtermHandler);
+  };
+}
+
+/**
  * Node start task - starts the local Midnight Docker stack
  */
 export const nodeTask: TaskDefinition = {
@@ -53,13 +103,18 @@ export const nodeTask: TaskDefinition = {
       description: 'Reset data volumes before starting',
       default: false,
     },
+    detach: {
+      type: 'boolean',
+      description: 'Run in background (detached mode)',
+      default: false,
+    },
   },
 
   async action(context: TaskContext): Promise<void> {
     const stack = createStackManager(context);
 
     // Check Docker availability
-    if (!await stack.isDockerAvailable()) {
+    if (!(await stack.isDockerAvailable())) {
       logger.error('Docker is not available.');
       logger.info('Please install Docker: https://docs.docker.com/get-docker/');
       throw new Error('Docker not available');
@@ -115,8 +170,27 @@ export const nodeTask: TaskDefinition = {
     logger.log(`  Indexer:      ${urls['indexer']}`);
     logger.log(`  Proof Server: ${urls['proofServer']}`);
     logger.newline();
-    logger.info('Run "nightcap node:stop" to stop the network');
-    logger.info('Run "nightcap node:logs" to view logs');
+
+    const detach = context.params['detach'] === true;
+
+    if (detach) {
+      // Detached mode - exit after starting
+      logger.info('Running in detached mode');
+      logger.info('Run "nightcap node:stop" to stop the network');
+      logger.info('Run "nightcap node:logs" to view logs');
+    } else {
+      // Foreground mode - keep running and handle signals
+      logger.info('Press Ctrl+C to stop the network');
+      logger.newline();
+
+      // Set up graceful shutdown handlers
+      setupShutdownHandlers(stack);
+
+      // Keep the process alive
+      await new Promise<void>(() => {
+        // This promise never resolves - we exit via signal handlers
+      });
+    }
   },
 };
 

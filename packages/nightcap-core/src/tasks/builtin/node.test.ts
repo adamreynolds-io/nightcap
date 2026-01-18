@@ -75,9 +75,52 @@ describe('node tasks', () => {
       expect(nodeTask.description).toBe('Start local Midnight development network');
     });
 
-    it('should have pull and reset params', () => {
+    it('should have pull, reset, and detach params', () => {
       expect(nodeTask.params?.pull).toBeDefined();
       expect(nodeTask.params?.reset).toBeDefined();
+      expect(nodeTask.params?.detach).toBeDefined();
+    });
+
+    it('should have detach param with correct defaults', () => {
+      expect(nodeTask.params?.detach?.type).toBe('boolean');
+      expect(nodeTask.params?.detach?.default).toBe(false);
+      expect(nodeTask.params?.detach?.description).toContain('background');
+    });
+
+    it('should run in detached mode when --detach is passed', async () => {
+      const { StackManager } = await import('@nightcap/docker-orchestrator');
+      const mockStop = vi.fn().mockResolvedValue({ success: true });
+      vi.mocked(StackManager).mockImplementation(
+        () =>
+          ({
+            isDockerAvailable: vi.fn().mockResolvedValue(true),
+            getStatus: vi.fn().mockResolvedValue({
+              running: false,
+              services: { node: null, indexer: null, 'proof-server': null },
+            }),
+            getServiceUrls: vi.fn().mockReturnValue({
+              nodeRpc: 'http://localhost:9933',
+              nodeWs: 'ws://localhost:9944',
+              indexer: 'http://localhost:8088',
+              proofServer: 'http://localhost:6300',
+            }),
+            getMissingImages: vi.fn().mockResolvedValue([]),
+            pullImages: vi.fn().mockResolvedValue(true),
+            start: vi.fn().mockResolvedValue({ success: true }),
+            stop: mockStop,
+          }) as unknown as ReturnType<typeof StackManager>
+      );
+
+      const context = {
+        config: {},
+        network: { name: 'localnet' },
+        networkName: 'localnet',
+        params: { detach: true },
+        verbose: false,
+      };
+
+      // In detached mode, the action should complete without blocking
+      await expect(nodeTask.action(context)).resolves.not.toThrow();
     });
   });
 
