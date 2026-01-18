@@ -1,3 +1,7 @@
+## Reference
+
+See [example-counter](https://github.com/midnightntwrk/example-counter) as the reference dApp structure for the "dapp" template.
+
 ## ADDED Requirements
 
 ### Requirement: Project Initialization Command

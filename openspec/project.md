@@ -129,3 +129,15 @@ Install (stable): `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midn
 |---------|-----------------|
 | `localnet` | Full stack: node + toolkit + indexer + proof-server |
 | `devnet`, `qanet`, `preview`, `preprod`, `mainnet` | Toolkit only (connects to remote infra) |
+
+## Reference Examples
+
+| Repository | Purpose |
+|------------|---------|
+| [example-counter](https://github.com/midnightntwrk/example-counter) | Reference dApp with valid Compact contract syntax, CLI tool, and project structure |
+
+The example-counter repository demonstrates:
+- Valid Compact contract syntax (compatible with compactc 0.25.0+)
+- Standard project structure for Midnight dApps
+- CLI implementation for contract interaction
+- Integration patterns with the Midnight network

@@ -1,3 +1,7 @@
+## Reference
+
+See [example-counter](https://github.com/midnightntwrk/example-counter) for valid Compact contract syntax and project structure compatible with compactc 0.25.0+.
+
 ## ADDED Requirements
 
 ### Requirement: Compile Task
