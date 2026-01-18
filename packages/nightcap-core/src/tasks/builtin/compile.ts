@@ -376,9 +376,9 @@ export const compilerInstallTask: TaskDefinition = {
   name: 'compiler:install',
   description: 'Install a Compact compiler version',
   params: {
-    version: {
+    'compiler-version': {
       type: 'string',
-      description: 'Compiler version to install',
+      description: 'Compiler version to install (e.g., 0.26.0)',
       required: true,
     },
     prerelease: {
@@ -389,12 +389,12 @@ export const compilerInstallTask: TaskDefinition = {
   },
 
   async action(context: TaskContext): Promise<void> {
-    const version = context.params['version'] as string;
+    const version = context.params['compiler-version'] as string;
     const prerelease = context.params['prerelease'] === true;
 
     if (!version) {
       logger.error('Version is required');
-      logger.info('Usage: nightcap compiler:install <version>');
+      logger.info('Usage: nightcap compiler:install --compiler-version <version>');
       throw new Error('Version required');
     }
 
