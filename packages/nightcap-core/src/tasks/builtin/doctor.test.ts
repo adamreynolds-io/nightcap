@@ -39,6 +39,24 @@ vi.mock('node:child_process', () => ({
   }),
 }));
 
+// Mock node:os for memory checks
+const mockTotalmem = vi.fn();
+const mockFreemem = vi.fn();
+vi.mock('node:os', () => ({
+  totalmem: () => mockTotalmem(),
+  freemem: () => mockFreemem(),
+}));
+
+// Mock node:fs/promises for disk space checks
+const mockStatfs = vi.fn();
+vi.mock('node:fs/promises', () => ({
+  statfs: () => mockStatfs(),
+}));
+
+// Mock global fetch for registry connectivity checks
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
 function createMockContext(overrides?: Partial<TaskContext>): TaskContext {
   return {
     config: {
@@ -70,6 +88,17 @@ function createMockContext(overrides?: Partial<TaskContext>): TaskContext {
 describe('doctorTask', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: registry is reachable (ghcr.io returns 401 for unauthenticated)
+    mockFetch.mockResolvedValue({ status: 401 });
+    // Default: 16 GB total memory, 8 GB free
+    mockTotalmem.mockReturnValue(16 * 1024 * 1024 * 1024);
+    mockFreemem.mockReturnValue(8 * 1024 * 1024 * 1024);
+    // Default: 100 GB total disk, 50 GB available
+    mockStatfs.mockResolvedValue({
+      bsize: 4096,
+      blocks: 25 * 1024 * 1024, // ~100 GB total
+      bfree: 12.5 * 1024 * 1024, // ~50 GB available
+    });
   });
 
   afterEach(() => {
@@ -226,6 +255,178 @@ describe('doctor helper functions', () => {
 
       expect(logger.log).toHaveBeenCalledWith(
         expect.stringMatching(/\[WARN\].*Configuration/)
+      );
+    });
+  });
+
+  describe('registry connectivity check', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should pass when registry returns 401 (unauthenticated but reachable)', async () => {
+      mockFetch.mockResolvedValue({ status: 401 });
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[OK\].*Registry Connectivity/)
+      );
+    });
+
+    it('should pass when registry returns 200', async () => {
+      mockFetch.mockResolvedValue({ status: 200 });
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[OK\].*Registry Connectivity/)
+      );
+    });
+
+    it('should warn when registry is unreachable', async () => {
+      mockFetch.mockRejectedValue(new Error('ENOTFOUND'));
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[WARN\].*Registry Connectivity/)
+      );
+    });
+
+    it('should warn when connection times out', async () => {
+      const abortError = new Error('Aborted');
+      abortError.name = 'AbortError';
+      mockFetch.mockRejectedValue(abortError);
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[WARN\].*Registry Connectivity/)
+      );
+    });
+
+    it('should warn when registry returns unexpected status', async () => {
+      mockFetch.mockResolvedValue({ status: 500 });
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[WARN\].*Registry Connectivity/)
+      );
+    });
+  });
+
+  describe('memory check', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockFetch.mockResolvedValue({ status: 401 });
+      mockStatfs.mockResolvedValue({
+        bsize: 4096,
+        blocks: 25 * 1024 * 1024,
+        bfree: 12.5 * 1024 * 1024,
+      });
+    });
+
+    it('should pass when system has sufficient memory (>= 8 GB)', async () => {
+      mockTotalmem.mockReturnValue(16 * 1024 * 1024 * 1024); // 16 GB
+      mockFreemem.mockReturnValue(8 * 1024 * 1024 * 1024);
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[OK\].*System Memory/)
+      );
+    });
+
+    it('should warn when system has low memory (< 8 GB)', async () => {
+      mockTotalmem.mockReturnValue(4 * 1024 * 1024 * 1024); // 4 GB
+      mockFreemem.mockReturnValue(2 * 1024 * 1024 * 1024);
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[WARN\].*System Memory/)
+      );
+    });
+  });
+
+  describe('disk space check', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockFetch.mockResolvedValue({ status: 401 });
+      mockTotalmem.mockReturnValue(16 * 1024 * 1024 * 1024);
+      mockFreemem.mockReturnValue(8 * 1024 * 1024 * 1024);
+    });
+
+    it('should pass when disk has sufficient space (>= 20 GB)', async () => {
+      mockStatfs.mockResolvedValue({
+        bsize: 4096,
+        blocks: 50 * 1024 * 1024, // ~200 GB total
+        bfree: 25 * 1024 * 1024, // ~100 GB available
+      });
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[OK\].*Disk Space/)
+      );
+    });
+
+    it('should warn when disk space is getting low (10-20 GB)', async () => {
+      mockStatfs.mockResolvedValue({
+        bsize: 4096,
+        blocks: 25 * 1024 * 1024, // ~100 GB total
+        bfree: 3.5 * 1024 * 1024, // ~14 GB available
+      });
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[WARN\].*Disk Space/)
+      );
+    });
+
+    it('should error when disk space is critically low (< 10 GB)', async () => {
+      mockStatfs.mockResolvedValue({
+        bsize: 4096,
+        blocks: 25 * 1024 * 1024, // ~100 GB total
+        bfree: 1 * 1024 * 1024, // ~4 GB available
+      });
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      // This should throw because of the disk space error
+      await expect(doctorTask.action(context)).rejects.toThrow('Doctor found errors');
+    });
+
+    it('should warn when statfs fails', async () => {
+      mockStatfs.mockRejectedValue(new Error('ENOENT'));
+      const { logger } = await import('../../utils/logger.js');
+      const context = createMockContext();
+
+      await doctorTask.action(context);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[WARN\].*Disk Space/)
       );
     });
   });

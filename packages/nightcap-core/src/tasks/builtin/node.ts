@@ -235,6 +235,103 @@ export const nodeResetTask: TaskDefinition = {
 };
 
 /**
+ * Node exec task - execute command in a service container
+ */
+export const nodeExecTask: TaskDefinition = {
+  name: 'node:exec',
+  description: 'Execute a command in a service container',
+  params: {
+    service: {
+      type: 'string',
+      description: 'Service to run command in (node, indexer, proof-server)',
+      required: true,
+    },
+    command: {
+      type: 'string',
+      description: 'Command to execute',
+      required: true,
+    },
+  },
+
+  async action(context: TaskContext): Promise<void> {
+    const stack = createStackManager(context);
+    const service = context.params['service'] as ServiceName;
+    const command = context.params['command'] as string;
+
+    // Validate service name
+    const validServices: ServiceName[] = ['node', 'indexer', 'proof-server'];
+    if (!validServices.includes(service)) {
+      logger.error(`Invalid service: ${service}`);
+      logger.info(`Valid services: ${validServices.join(', ')}`);
+      throw new Error('Invalid service');
+    }
+
+    // Check if stack is running
+    const status = await stack.getStatus();
+    if (!status.running) {
+      logger.error('Midnight stack is not running');
+      logger.info('Start it with: nightcap node');
+      throw new Error('Stack not running');
+    }
+
+    // Check if specific service is running
+    const serviceStatus = status.services[service];
+    if (!serviceStatus || serviceStatus.state !== 'running') {
+      logger.error(`Service '${service}' is not running`);
+      throw new Error('Service not running');
+    }
+
+    // Parse command into array (split by spaces, respecting quotes)
+    const commandParts = parseCommand(command);
+
+    logger.debug(`Executing in ${service}: ${commandParts.join(' ')}`);
+    const result = await stack.exec(service, commandParts);
+
+    if (result.success) {
+      if (result.output) {
+        logger.log(result.output);
+      }
+    } else {
+      logger.error(`Command failed: ${result.error}`);
+      throw new Error('Command execution failed');
+    }
+  },
+};
+
+/**
+ * Parse a command string into parts, respecting quoted strings
+ */
+function parseCommand(command: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let quoteChar = '';
+
+  for (const char of command) {
+    if ((char === '"' || char === "'") && !inQuotes) {
+      inQuotes = true;
+      quoteChar = char;
+    } else if (char === quoteChar && inQuotes) {
+      inQuotes = false;
+      quoteChar = '';
+    } else if (char === ' ' && !inQuotes) {
+      if (current) {
+        parts.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  if (current) {
+    parts.push(current);
+  }
+
+  return parts;
+}
+
+/**
  * Display stack status
  */
 function displayStatus(status: { running: boolean; services: Record<ServiceName, { state: string } | null> }, urls: Record<string, string>): void {

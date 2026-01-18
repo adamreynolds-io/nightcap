@@ -32,6 +32,7 @@ export interface DockerConfig {
     node?: string;
     indexer?: string;
     proofServer?: string;
+    toolkit?: string;
   };
   /** Port mappings for Docker services */
   ports?: {
@@ -107,6 +108,11 @@ export interface TaskContext {
   params: Record<string, unknown>;
   /** Whether verbose output is enabled */
   verbose: boolean;
+  /**
+   * Run the original task when overriding a built-in task.
+   * Only available when the current task overrides another task.
+   */
+  runSuper?: () => Promise<void>;
 }
 
 /**

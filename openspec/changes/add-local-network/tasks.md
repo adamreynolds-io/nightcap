@@ -1,9 +1,9 @@
 ## 1. Node Command
-- [ ] 1.1 Implement `nightcap node` task (start the stack)
+- [x] 1.1 Implement `nightcap node` task (start the stack)
 - [x] 1.2 Generate docker-compose.yml for Midnight stack
 - [x] 1.3 Pull required images with progress display
-- [ ] 1.4 Start containers via Docker Compose API
-- [ ] 1.5 Display service URLs and account info on startup
+- [x] 1.4 Start containers via Docker Compose API
+- [x] 1.5 Display service URLs and account info on startup
 - [ ] 1.6 Implement graceful shutdown on SIGINT/SIGTERM
 
 ## 2. Docker Stack Configuration
@@ -15,11 +15,11 @@
 - [x] 2.6 Configure volume mounts for persistent data
 
 ## 3. Subcommands
-- [ ] 3.1 Implement `nightcap node:stop` to stop stack
+- [x] 3.1 Implement `nightcap node:stop` to stop stack
 - [x] 3.2 Implement `nightcap node:logs [service]` to tail logs
 - [x] 3.3 Implement `nightcap node:status` to show running services
-- [ ] 3.4 Implement `nightcap node:reset` to clear data and restart
-- [ ] 3.5 Implement `nightcap node:exec <service> <command>` for debugging
+- [x] 3.4 Implement `nightcap node:reset` to clear data and restart
+- [x] 3.5 Implement `nightcap node:exec <service> <command>` for debugging
 
 ## 4. Development Accounts
 - [ ] 4.1 Configure genesis with pre-funded development accounts

@@ -146,5 +146,144 @@ describe('TaskRegistry', () => {
 
       expect(registry.get('test')?.action).toBe(originalAction);
     });
+
+    it('should store original for runSuper support', () => {
+      const original = createMockTask('test');
+      original.description = 'Original';
+      registry.register(original);
+
+      registry.override('test', { description: 'Overridden' });
+
+      expect(registry.hasOriginal('test')).toBe(true);
+      expect(registry.getOriginal('test')?.description).toBe('Original');
+    });
+  });
+
+  describe('registerCustom', () => {
+    it('should register a new custom task with action', () => {
+      const customAction = async () => {};
+      registry.registerCustom('custom', {
+        description: 'Custom task',
+        action: customAction,
+      });
+
+      expect(registry.has('custom')).toBe(true);
+      expect(registry.get('custom')?.description).toBe('Custom task');
+      expect(registry.get('custom')?.action).toBe(customAction);
+    });
+
+    it('should use default description for new task without one', () => {
+      registry.registerCustom('custom', {
+        action: async () => {},
+      });
+
+      expect(registry.get('custom')?.description).toBe('Custom task: custom');
+    });
+
+    it('should throw when registering new task without action', () => {
+      expect(() => {
+        registry.registerCustom('custom', { description: 'No action' });
+      }).toThrow("Cannot register custom task 'custom': no action provided");
+    });
+
+    it('should override existing task with custom action', () => {
+      const originalAction = async () => {};
+      const customAction = async () => {};
+
+      registry.register({
+        name: 'test',
+        description: 'Original',
+        action: originalAction,
+      });
+
+      registry.registerCustom('test', {
+        description: 'Custom override',
+        action: customAction,
+      });
+
+      expect(registry.get('test')?.description).toBe('Custom override');
+      expect(registry.get('test')?.action).toBe(customAction);
+    });
+
+    it('should preserve original action when overriding without action', () => {
+      const originalAction = async () => {};
+
+      registry.register({
+        name: 'test',
+        description: 'Original',
+        action: originalAction,
+      });
+
+      registry.registerCustom('test', {
+        description: 'Custom description only',
+      });
+
+      expect(registry.get('test')?.description).toBe('Custom description only');
+      expect(registry.get('test')?.action).toBe(originalAction);
+    });
+
+    it('should store original for runSuper support when overriding', () => {
+      const originalAction = async () => {};
+
+      registry.register({
+        name: 'test',
+        description: 'Original',
+        action: originalAction,
+      });
+
+      registry.registerCustom('test', {
+        description: 'Custom',
+        action: async () => {},
+      });
+
+      expect(registry.hasOriginal('test')).toBe(true);
+      expect(registry.getOriginal('test')?.action).toBe(originalAction);
+    });
+
+    it('should merge params from original and custom', () => {
+      registry.register({
+        name: 'test',
+        description: 'Original',
+        params: {
+          foo: { type: 'string', description: 'Foo param' },
+        },
+        action: async () => {},
+      });
+
+      registry.registerCustom('test', {
+        params: {
+          bar: { type: 'boolean', description: 'Bar param' },
+        },
+      });
+
+      const task = registry.get('test');
+      expect(task?.params?.['foo']).toBeDefined();
+      expect(task?.params?.['bar']).toBeDefined();
+    });
+  });
+
+  describe('hasOriginal', () => {
+    it('should return false when task has no original', () => {
+      registry.register(createMockTask('test'));
+      expect(registry.hasOriginal('test')).toBe(false);
+    });
+
+    it('should return true when task was overridden via register', () => {
+      registry.register(createMockTask('test'));
+      registry.register(createMockTask('test'));
+      expect(registry.hasOriginal('test')).toBe(true);
+    });
+
+    it('should return true when task was overridden via override', () => {
+      registry.register(createMockTask('test'));
+      registry.override('test', { description: 'New' });
+      expect(registry.hasOriginal('test')).toBe(true);
+    });
+
+    it('should return true when task was overridden via registerCustom', () => {
+      registry.register(createMockTask('test'));
+      registry.registerCustom('test', { description: 'Custom' });
+      expect(registry.hasOriginal('test')).toBe(true);
+    });
   });
 });

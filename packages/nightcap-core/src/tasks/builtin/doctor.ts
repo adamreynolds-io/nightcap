@@ -4,6 +4,8 @@
  */
 
 import { execSync } from 'node:child_process';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import type { TaskDefinition, TaskContext } from '../types.js';
 import { logger } from '../../utils/logger.js';
 
@@ -11,6 +13,18 @@ import { logger } from '../../utils/logger.js';
  * Minimum required Node.js version
  */
 const MIN_NODE_VERSION = 20;
+
+/**
+ * Minimum recommended memory in GB
+ * The Midnight stack (node + indexer + proof server) needs significant RAM
+ */
+const MIN_MEMORY_GB = 8;
+
+/**
+ * Minimum recommended disk space in GB
+ * Docker images and blockchain data can consume significant storage
+ */
+const MIN_DISK_GB = 20;
 
 /**
  * Check result for a single diagnostic
@@ -186,6 +200,69 @@ function checkConfiguration(context: TaskContext): CheckResult {
 }
 
 /**
+ * Registry endpoints to check for connectivity
+ */
+const REGISTRY_ENDPOINTS = [
+  {
+    name: 'GitHub Container Registry',
+    url: 'https://ghcr.io/v2/',
+    // ghcr.io returns 401 when unauthenticated, but that still means connectivity works
+    acceptCodes: [200, 401],
+  },
+] as const;
+
+/**
+ * Check network connectivity to container registries
+ */
+async function checkRegistryConnectivity(): Promise<CheckResult> {
+  const results: { name: string; reachable: boolean; error?: string }[] = [];
+
+  for (const endpoint of REGISTRY_ENDPOINTS) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(endpoint.url, {
+        method: 'HEAD',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const isReachable = endpoint.acceptCodes.includes(response.status);
+      results.push({ name: endpoint.name, reachable: isReachable });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.name === 'AbortError'
+            ? 'Connection timed out'
+            : error.message
+          : 'Unknown error';
+      results.push({ name: endpoint.name, reachable: false, error: errorMessage });
+    }
+  }
+
+  const unreachable = results.filter((r) => !r.reachable);
+
+  if (unreachable.length === 0) {
+    return {
+      name: 'Registry Connectivity',
+      status: 'ok',
+      message: 'Container registries are reachable',
+    };
+  }
+
+  const details = unreachable.map((r) => `${r.name}: ${r.error ?? 'unreachable'}`).join('\n');
+
+  return {
+    name: 'Registry Connectivity',
+    status: 'warn',
+    message: `Cannot reach ${unreachable.length} registry endpoint(s)`,
+    details: `${details}\nCheck your network connection or firewall settings`,
+  };
+}
+
+/**
  * Check pnpm availability
  */
 function checkPnpm(): CheckResult {
@@ -207,6 +284,86 @@ function checkPnpm(): CheckResult {
 }
 
 /**
+ * Format bytes to human-readable string
+ */
+function formatBytes(bytes: number): string {
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) {
+    return `${gb.toFixed(1)} GB`;
+  }
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(0)} MB`;
+}
+
+/**
+ * Check system memory
+ */
+function checkMemory(): CheckResult {
+  const totalMemory = os.totalmem();
+  const freeMemory = os.freemem();
+  const totalGB = totalMemory / (1024 * 1024 * 1024);
+
+  if (totalGB >= MIN_MEMORY_GB) {
+    return {
+      name: 'System Memory',
+      status: 'ok',
+      message: `${formatBytes(totalMemory)} total (${formatBytes(freeMemory)} available)`,
+    };
+  }
+
+  return {
+    name: 'System Memory',
+    status: 'warn',
+    message: `${formatBytes(totalMemory)} total - below recommended ${MIN_MEMORY_GB} GB`,
+    details: `The Midnight stack may run slowly. Consider closing other applications or upgrading RAM.`,
+  };
+}
+
+/**
+ * Check available disk space
+ */
+async function checkDiskSpace(): Promise<CheckResult> {
+  try {
+    // Check disk space in current working directory
+    const stats = await fs.statfs(process.cwd());
+    const availableBytes = stats.bfree * stats.bsize;
+    const totalBytes = stats.blocks * stats.bsize;
+    const availableGB = availableBytes / (1024 * 1024 * 1024);
+
+    if (availableGB >= MIN_DISK_GB) {
+      return {
+        name: 'Disk Space',
+        status: 'ok',
+        message: `${formatBytes(availableBytes)} available of ${formatBytes(totalBytes)}`,
+      };
+    }
+
+    if (availableGB >= MIN_DISK_GB / 2) {
+      return {
+        name: 'Disk Space',
+        status: 'warn',
+        message: `${formatBytes(availableBytes)} available - getting low`,
+        details: `Recommended: at least ${MIN_DISK_GB} GB free for Docker images and data`,
+      };
+    }
+
+    return {
+      name: 'Disk Space',
+      status: 'error',
+      message: `${formatBytes(availableBytes)} available - critically low`,
+      details: `Need at least ${MIN_DISK_GB} GB free. Docker images alone require several GB.`,
+    };
+  } catch {
+    return {
+      name: 'Disk Space',
+      status: 'warn',
+      message: 'Unable to check disk space',
+      details: 'Could not determine available disk space',
+    };
+  }
+}
+
+/**
  * Doctor task definition
  */
 export const doctorTask: TaskDefinition = {
@@ -216,13 +373,23 @@ export const doctorTask: TaskDefinition = {
   async action(context: TaskContext): Promise<void> {
     logger.info('Running Nightcap diagnostics...\n');
 
-    const checks: CheckResult[] = [
+    // Run sync checks first
+    const syncChecks: CheckResult[] = [
       checkNodeVersion(),
       checkPnpm(),
       checkDocker(),
       checkDockerImages(),
       checkConfiguration(context),
+      checkMemory(),
     ];
+
+    // Run async checks
+    const asyncChecks: CheckResult[] = await Promise.all([
+      checkRegistryConnectivity(),
+      checkDiskSpace(),
+    ]);
+
+    const checks: CheckResult[] = [...syncChecks, ...asyncChecks];
 
     let hasErrors = false;
     let hasWarnings = false;
