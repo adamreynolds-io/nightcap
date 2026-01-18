@@ -389,7 +389,8 @@ export const compilerInstallTask: TaskDefinition = {
   },
 
   async action(context: TaskContext): Promise<void> {
-    const version = context.params['compiler-version'] as string;
+    // Commander.js converts kebab-case to camelCase
+    const version = context.params['compilerVersion'] as string;
     const prerelease = context.params['prerelease'] === true;
 
     if (!version) {

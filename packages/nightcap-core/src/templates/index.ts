@@ -199,35 +199,31 @@ coverage/
  * Generate sample Counter contract
  */
 export function generateCounterContract(): string {
-  return `// Counter.compact
-// A simple counter contract demonstrating state management
+  return `/*
+ * Counter.compact
+ * A simple counter contract using the Compact standard library
+ */
 
-pragma language 0.1.0;
+pragma language_version >= 0.16 && <= 0.18;
 
-contract Counter {
-    // Private state - only the contract can access
-    private var count: Int;
+import CompactStandardLibrary;
 
-    // Initialize the counter
-    constructor() {
-        count = 0;
-    }
+// Export the counter ledger state
+export ledger counter: Counter;
 
-    // Increment the counter
-    transition increment() {
-        count = count + 1;
-    }
+// Increment the counter by 1
+export circuit increment(): [] {
+  counter.increment(1);
+}
 
-    // Decrement the counter
-    transition decrement() {
-        require(count > 0, "Counter cannot go below zero");
-        count = count - 1;
-    }
+// Decrement the counter by 1
+export circuit decrement(): [] {
+  counter.decrement(1);
+}
 
-    // Get the current count
-    view get_count(): Int {
-        return count;
-    }
+// Get the current count (view-only)
+export circuit get_count(): Uint<64> {
+  return counter.value();
 }
 `;
 }

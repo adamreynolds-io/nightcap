@@ -133,12 +133,12 @@ describe('generateCounterContract', () => {
   it('should generate valid Compact contract', () => {
     const result = generateCounterContract();
 
-    expect(result).toContain('pragma language 0.1.0');
-    expect(result).toContain('contract Counter');
-    expect(result).toContain('private var count: Int');
-    expect(result).toContain('transition increment()');
-    expect(result).toContain('transition decrement()');
-    expect(result).toContain('view get_count(): Int');
+    expect(result).toContain('pragma language_version');
+    expect(result).toContain('import CompactStandardLibrary');
+    expect(result).toContain('export ledger counter: Counter');
+    expect(result).toContain('export circuit increment()');
+    expect(result).toContain('export circuit decrement()');
+    expect(result).toContain('export circuit get_count()');
   });
 });
 
