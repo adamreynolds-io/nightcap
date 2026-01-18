@@ -33,6 +33,13 @@ export interface DockerConfig {
     indexer?: string;
     proofServer?: string;
   };
+  /** Port mappings for Docker services */
+  ports?: {
+    nodeRpc?: number;
+    nodeWs?: number;
+    indexer?: number;
+    proofServer?: number;
+  };
 }
 
 /**
