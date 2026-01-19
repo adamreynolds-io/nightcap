@@ -28,6 +28,7 @@ import {
   deployTask,
   deploymentsTask,
 } from './deploy.js';
+import { consoleTask } from './console.js';
 
 /**
  * Register all built-in tasks with the registry
@@ -60,4 +61,7 @@ export function registerBuiltinTasks(registry: TaskRegistry): void {
   // Deploy tasks
   registry.register(deployTask);
   registry.register(deploymentsTask);
+
+  // Interactive console
+  registry.register(consoleTask);
 }

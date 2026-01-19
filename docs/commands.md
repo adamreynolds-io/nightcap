@@ -454,6 +454,82 @@ Deployments on localnet:
     Deployed: 2025-01-15T10:31:00.000Z
 ```
 
+## Interactive Commands
+
+### console
+
+Open an interactive console for contract exploration and debugging.
+
+```bash
+nightcap console [options]
+```
+
+**Options:**
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--network <name>` | string | Network to connect to | `localnet` |
+
+**Examples:**
+
+```bash
+# Start console with default network
+nightcap console
+
+# Connect to devnet
+nightcap console --network devnet
+```
+
+**Available in console:**
+
+| Object/Function | Description |
+|-----------------|-------------|
+| `config` | Nightcap configuration object |
+| `network` | Current network configuration |
+| `networkName` | Name of the connected network |
+| `contracts` | List of compiled contract names |
+| `getContract(name)` | Get contract artifact by name |
+| `listContracts()` | List all compiled contracts |
+| `deployContract(name, args)` | Deploy a contract |
+| `getContractAt(name, address)` | Connect to deployed contract |
+| `getBalance(address)` | Get account balance |
+| `getBlock(number?)` | Get block information |
+| `help()` | Show available commands |
+
+**REPL Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `.help` | Show REPL commands |
+| `.exit` | Exit the console |
+| `.clear` | Clear the screen |
+| `.contracts` | List compiled contracts |
+| `.network` | Show network info |
+
+**Example session:**
+
+```javascript
+nightcap:localnet> contracts
+['Counter', 'Token']
+
+nightcap:localnet> const counter = getContract('Counter')
+nightcap:localnet> await deployContract('Counter', [])
+Deploying Counter... done
+Contract deployed at: 0x1234...
+
+nightcap:localnet> .network
+Network: localnet
+  Node URL: http://localhost:9944
+  Indexer URL: http://localhost:8088/api/v1/graphql
+  Proof Server: http://localhost:6300
+  Local: true
+
+nightcap:localnet> .exit
+Goodbye!
+```
+
+> **Note:** Some helpers like `deployContract`, `getContractAt`, and `getBalance` require the midnight-js plugin for full functionality.
+
 ## Shell Commands
 
 ### completion
