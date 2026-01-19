@@ -221,5 +221,40 @@ describe('console task', () => {
       expect(historyPath).toContain('.nightcap');
       expect(historyPath).toContain('console_history');
     });
+
+    it('should configure auto-completion', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      const repl = await import('node:repl');
+      let capturedOptions: Record<string, unknown> = {};
+
+      vi.mocked(repl.start).mockImplementation((options) => {
+        capturedOptions = options as Record<string, unknown>;
+        return {
+          context: {},
+          setupHistory: vi.fn((_, cb) => cb(null)),
+          defineCommand: vi.fn(),
+          on: vi.fn((event, cb) => {
+            if (event === 'exit') {
+              setTimeout(cb, 10);
+            }
+          }),
+        } as unknown as ReturnType<typeof repl.start>;
+      });
+
+      const context = {
+        config: {},
+        network: { name: 'localnet' },
+        networkName: 'localnet',
+        params: {},
+        verbose: false,
+      };
+
+      await consoleTask.action(context);
+
+      // Verify completer is configured
+      expect(capturedOptions).toHaveProperty('completer');
+      expect(typeof capturedOptions.completer).toBe('function');
+    });
   });
 });

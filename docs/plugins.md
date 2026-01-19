@@ -129,6 +129,9 @@ interface ConfigHookHandlers {
 }
 
 interface RuntimeHookHandlers {
+  // Extend the runtime environment with plugin namespaces
+  extendEnvironment?: (env: NightcapRuntimeEnvironment) => void | Promise<void>;
+
   // Called after runtime is created
   created?: (ctx: NightcapContext) => void | Promise<void>;
 }
@@ -184,9 +187,80 @@ const validationPlugin: NightcapPlugin = {
 };
 ```
 
+### Extend Environment Hook (Recommended)
+
+Use `runtime.extendEnvironment` to add plugin namespaces to the runtime environment. This is the recommended pattern for plugins that provide runtime functionality, following the Hardhat approach.
+
+```typescript
+import type { NightcapPlugin, NightcapRuntimeEnvironment } from '@nightcap/core';
+
+interface MyPluginNamespace {
+  doSomething(): Promise<void>;
+  getValue(): string;
+}
+
+const myPlugin: NightcapPlugin = {
+  id: 'my-plugin',
+  hookHandlers: {
+    runtime: {
+      extendEnvironment(env: NightcapRuntimeEnvironment) {
+        // Add your namespace to the environment
+        const myNamespace: MyPluginNamespace = {
+          async doSomething() {
+            console.log('Doing something...');
+          },
+          getValue() {
+            return 'Hello from my-plugin!';
+          },
+        };
+
+        // Attach to env (accessible as env.myPlugin in tasks)
+        (env as NightcapRuntimeEnvironment & { myPlugin: MyPluginNamespace }).myPlugin = myNamespace;
+      },
+    },
+  },
+};
+
+export default myPlugin;
+```
+
+Tasks can then access the namespace via `context.env`:
+
+```typescript
+const myTask: TaskDefinition = {
+  name: 'use-plugin',
+  description: 'Use the plugin namespace',
+  async action(context) {
+    // Access the plugin namespace
+    const { myPlugin } = context.env as { myPlugin: MyPluginNamespace };
+
+    console.log(myPlugin.getValue());
+    await myPlugin.doSomething();
+  },
+};
+```
+
+**Real-world example: midnight-js plugin**
+
+The `@nightcap/plugin-midnight-js` plugin adds an `env.midnight` namespace:
+
+```typescript
+// In a task or script
+const { midnight } = context.env as { midnight: MidnightNamespace };
+
+// Get a contract factory
+const Counter = await midnight.getContractFactory('Counter');
+
+// Deploy the contract
+const { address } = await Counter.deploy([initialValue]);
+
+// Or get an existing contract
+const token = await midnight.getContractAt('Token', '0x1234...');
+```
+
 ### Runtime Created Hook
 
-Use `runtime.created` for initialization:
+Use `runtime.created` for initialization after the environment is set up:
 
 ```typescript
 const loggingPlugin: NightcapPlugin = {
@@ -447,6 +521,7 @@ import type {
   NightcapUserConfig,
   ResolvedNightcapConfig,
   NightcapContext,
+  NightcapRuntimeEnvironment,
   NightcapHookHandlers,
   ConfigHookHandlers,
   RuntimeHookHandlers,

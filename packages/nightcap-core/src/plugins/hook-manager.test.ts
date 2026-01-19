@@ -9,6 +9,7 @@ import type {
   NightcapPlugin,
   NightcapUserConfig,
   NightcapContext,
+  NightcapRuntimeEnvironment,
 } from './types.js';
 
 function createPlugin(
@@ -252,6 +253,139 @@ describe('HookManager', () => {
 
         expect(result.defaultNetwork).toBe('testnet');
       });
+    });
+  });
+
+  describe('runExtendEnvironmentHooks', () => {
+    it('should call extendEnvironment hook for each plugin', async () => {
+      const manager = new HookManager();
+      const extend1 = vi.fn();
+      const extend2 = vi.fn();
+
+      manager.registerPlugin(
+        createPlugin('p1', { runtime: { extendEnvironment: extend1 } })
+      );
+      manager.registerPlugin(
+        createPlugin('p2', { runtime: { extendEnvironment: extend2 } })
+      );
+
+      const env: NightcapRuntimeEnvironment = {
+        config: { plugins: [] },
+        runTask: async () => {},
+      };
+
+      await manager.runExtendEnvironmentHooks(env);
+
+      expect(extend1).toHaveBeenCalledWith(env);
+      expect(extend2).toHaveBeenCalledWith(env);
+    });
+
+    it('should call hooks in plugin order', async () => {
+      const manager = new HookManager();
+      const calls: string[] = [];
+
+      manager.registerPlugin(
+        createPlugin('p1', {
+          runtime: {
+            extendEnvironment: () => {
+              calls.push('p1');
+            },
+          },
+        })
+      );
+      manager.registerPlugin(
+        createPlugin('p2', {
+          runtime: {
+            extendEnvironment: () => {
+              calls.push('p2');
+            },
+          },
+        })
+      );
+
+      const env: NightcapRuntimeEnvironment = {
+        config: { plugins: [] },
+        runTask: async () => {},
+      };
+
+      await manager.runExtendEnvironmentHooks(env);
+
+      expect(calls).toEqual(['p1', 'p2']);
+    });
+
+    it('should allow plugins to add properties to env', async () => {
+      const manager = new HookManager();
+
+      manager.registerPlugin(
+        createPlugin('my-plugin', {
+          runtime: {
+            extendEnvironment: (env) => {
+              (env as NightcapRuntimeEnvironment & { myPlugin: { foo: string } }).myPlugin = {
+                foo: 'bar',
+              };
+            },
+          },
+        })
+      );
+
+      const env: NightcapRuntimeEnvironment = {
+        config: { plugins: [] },
+        runTask: async () => {},
+      };
+
+      await manager.runExtendEnvironmentHooks(env);
+
+      expect((env as NightcapRuntimeEnvironment & { myPlugin: { foo: string } }).myPlugin).toEqual({
+        foo: 'bar',
+      });
+    });
+
+    it('should handle async extendEnvironment hooks', async () => {
+      const manager = new HookManager();
+      let completed = false;
+
+      manager.registerPlugin(
+        createPlugin('p1', {
+          runtime: {
+            extendEnvironment: async () => {
+              await new Promise((resolve) => setTimeout(resolve, 10));
+              completed = true;
+            },
+          },
+        })
+      );
+
+      const env: NightcapRuntimeEnvironment = {
+        config: { plugins: [] },
+        runTask: async () => {},
+      };
+
+      await manager.runExtendEnvironmentHooks(env);
+
+      expect(completed).toBe(true);
+    });
+
+    it('should propagate hook errors', async () => {
+      const manager = new HookManager();
+
+      manager.registerPlugin(
+        createPlugin('p1', {
+          runtime: {
+            extendEnvironment: () => {
+              throw new Error('Extension failed');
+            },
+          },
+        })
+      );
+
+      const env: NightcapRuntimeEnvironment = {
+        config: { plugins: [] },
+        runTask: async () => {},
+      };
+
+      await expect(manager.runExtendEnvironmentHooks(env)).rejects.toThrow(
+        'Extension failed'
+      );
     });
   });
 

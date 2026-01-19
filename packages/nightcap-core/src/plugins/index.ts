@@ -11,6 +11,7 @@ export type {
   NightcapHookHandlers,
   ConfigHookHandlers,
   RuntimeHookHandlers,
+  NightcapRuntimeEnvironment,
   NightcapContext,
 } from './types.js';
 

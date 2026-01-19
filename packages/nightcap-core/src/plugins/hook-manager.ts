@@ -8,6 +8,7 @@ import type {
   NightcapUserConfig,
   ResolvedNightcapConfig,
   NightcapContext,
+  NightcapRuntimeEnvironment,
   ConfigHookHandlers,
   RuntimeHookHandlers,
 } from './types.js';
@@ -112,6 +113,19 @@ export class HookManager {
     }
 
     return resolver(config);
+  }
+
+  /**
+   * Run runtime.extendEnvironment hooks to let plugins add extensions.
+   * Hooks are run sequentially in plugin order.
+   * Each plugin can add its namespace to the environment (e.g., env.midnight).
+   */
+  async runExtendEnvironmentHooks(env: NightcapRuntimeEnvironment): Promise<void> {
+    for (const { handlers } of this.#runtimeHandlers) {
+      if (handlers.extendEnvironment) {
+        await handlers.extendEnvironment(env);
+      }
+    }
   }
 
   /**

@@ -64,7 +64,7 @@ interface NetworkConfig {
   // Indexer GraphQL URL
   indexerUrl?: string;
 
-  // Proof server URL
+  // Proof server URL (MUST be localhost - see note below)
   proofServerUrl?: string;
 
   // Node RPC URL
@@ -74,6 +74,10 @@ interface NetworkConfig {
   isLocal?: boolean;
 }
 ```
+
+> **Important: Proof Server Must Be Local**
+>
+> The `proofServerUrl` must always point to `localhost` (default: `http://localhost:6300`). Proof servers process private transaction inputs, so sending data to a remote server would compromise privacy. For remote networks like devnet or mainnet, run a local proof server with `nightcap proof-server --network <name>`. See [Architecture](./architecture.md) for details.
 
 ### Pre-configured Networks
 
@@ -103,11 +107,11 @@ export default defineConfig({
       nodeUrl: 'http://localhost:10944',
       isLocal: true,
     },
-    // Add custom network
+    // Add custom network (proof server is always local)
     staging: {
       name: 'staging',
       indexerUrl: 'https://indexer.staging.example.com/api/v1/graphql',
-      proofServerUrl: 'https://proof.staging.example.com',
+      proofServerUrl: 'http://localhost:6300',  // Always local!
       nodeUrl: 'https://rpc.staging.example.com',
       isLocal: false,
     },
@@ -225,6 +229,9 @@ interface PathsConfig {
 
   // Directory for generated TypeScript types
   types?: string;
+
+  // Directory for deployment history
+  deployments?: string;
 }
 ```
 
@@ -236,6 +243,7 @@ interface PathsConfig {
 | `sources` | `./contracts` |
 | `deploy` | `./deploy` |
 | `types` | `./typechain` |
+| `deployments` | `./deployments` |
 
 ### Paths Configuration Example
 
@@ -297,7 +305,7 @@ export default defineConfig({
     preview: {
       name: 'preview',
       indexerUrl: 'https://indexer.preview.midnight.network/api/v1/graphql',
-      proofServerUrl: 'https://proof-server.preview.midnight.network',
+      proofServerUrl: 'http://localhost:6300',  // Always local!
       nodeUrl: 'https://rpc.preview.midnight.network',
       isLocal: false,
     },

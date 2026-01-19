@@ -282,6 +282,89 @@ nightcap node:snapshot:delete --name <snapshot-name>
 |--------|------|-------------|----------|
 | `--name <name>` | string | Name of the snapshot to delete | Yes |
 
+## Proof Server Commands
+
+For working with remote networks (devnet, testnet, mainnet), you need a local proof server. The proof server MUST run locally because it processes private transaction inputs. See [Architecture](./architecture.md) for details.
+
+### proof-server
+
+Start a local proof server for remote networks.
+
+```bash
+nightcap proof-server [options]
+```
+
+**Options:**
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--node-url <url>` | string | WebSocket URL of node (overrides network config) | From network config |
+| `--detach` | boolean | Run in background | `false` |
+| `--image <image>` | string | Docker image to use | Latest proof-server image |
+| `--port <number>` | number | Local port to expose | `6300` |
+
+**Examples:**
+
+```bash
+# Connect to devnet
+nightcap proof-server --network devnet
+
+# Connect to custom node
+nightcap proof-server --node-url wss://my-node.example.com
+
+# Run in background
+nightcap proof-server --network devnet --detach
+```
+
+### proof-server:stop
+
+Stop the local proof server.
+
+```bash
+nightcap proof-server:stop
+```
+
+### proof-server:status
+
+Show proof server status and health.
+
+```bash
+nightcap proof-server:status
+```
+
+**Example output:**
+
+```
+Proof server is running
+URL: http://localhost:6300
+Health: OK
+```
+
+### proof-server:logs
+
+View proof server logs.
+
+```bash
+nightcap proof-server:logs [options]
+```
+
+**Options:**
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--follow` | boolean | Follow log output | `false` |
+| `--tail <lines>` | number | Number of lines to show | `100` |
+
+**Examples:**
+
+```bash
+# View recent logs
+nightcap proof-server:logs
+
+# Follow log output
+nightcap proof-server:logs --follow
+```
+
 ## Compilation Commands
 
 ### compile
@@ -529,6 +612,64 @@ Goodbye!
 ```
 
 > **Note:** Some helpers like `deployContract`, `getContractAt`, and `getBalance` require the midnight-js plugin for full functionality.
+
+### run
+
+Execute a standalone script with Nightcap context.
+
+```bash
+nightcap run --script <path> [options]
+```
+
+**Options:**
+
+| Option | Type | Description | Required |
+|--------|------|-------------|----------|
+| `--script <path>` | string | Path to the script to execute | Yes |
+| `--network <name>` | string | Network to use | No (default: `localnet`) |
+
+**Examples:**
+
+```bash
+# Run a deployment script
+nightcap run --script scripts/deploy.ts
+
+# Run a script on devnet
+nightcap run --script scripts/setup.ts --network devnet
+```
+
+**Script Context:**
+
+Scripts can access Nightcap context in two ways:
+
+1. **Export a default/main function** (recommended):
+```typescript
+// scripts/deploy.ts
+export default async function(nightcap) {
+  console.log(`Network: ${nightcap.networkName}`);
+  console.log(`Node URL: ${nightcap.network.nodeUrl}`);
+
+  // Get deployed contract address
+  const tokenAddress = nightcap.getDeployedAddress('Token');
+}
+```
+
+2. **Access global context**:
+```typescript
+// scripts/query.ts
+const { config, network, networkName } = globalThis.nightcap;
+console.log(`Connected to ${networkName}`);
+```
+
+**Available Context:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `config` | NightcapConfig | Full Nightcap configuration |
+| `network` | NetworkConfig | Current network configuration |
+| `networkName` | string | Name of the current network |
+| `getDeployedAddress(name)` | function | Get deployed contract address |
+| `log` | Logger | Logger instance for output |
 
 ## Shell Commands
 

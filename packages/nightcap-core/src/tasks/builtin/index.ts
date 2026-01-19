@@ -28,7 +28,14 @@ import {
   deployTask,
   deploymentsTask,
 } from './deploy.js';
+import {
+  proofServerTask,
+  proofServerStopTask,
+  proofServerStatusTask,
+  proofServerLogsTask,
+} from './proof-server.js';
 import { consoleTask } from './console.js';
+import { runTask } from './run.js';
 
 /**
  * Register all built-in tasks with the registry
@@ -62,6 +69,15 @@ export function registerBuiltinTasks(registry: TaskRegistry): void {
   registry.register(deployTask);
   registry.register(deploymentsTask);
 
+  // Proof server tasks (for remote networks)
+  registry.register(proofServerTask);
+  registry.register(proofServerStopTask);
+  registry.register(proofServerStatusTask);
+  registry.register(proofServerLogsTask);
+
   // Interactive console
   registry.register(consoleTask);
+
+  // Script runner
+  registry.register(runTask);
 }

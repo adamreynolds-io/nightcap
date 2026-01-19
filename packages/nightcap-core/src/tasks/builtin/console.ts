@@ -98,28 +98,73 @@ function createContext(
     return contractNames;
   };
 
-  // Placeholder for deploy - requires midnight-js integration
-  const deployContract = async (name: string, _args: unknown[] = []): Promise<unknown> => {
+  // Lazy-load midnight provider when needed
+  type MidnightProvider = {
+    getContractFactory: <T>(name: string) => Promise<{ deploy: (args?: unknown[]) => Promise<{ address: string; contract: T }> }>;
+    getContractAt: <T>(name: string, address: string) => Promise<T>;
+    indexer: { getBalance: (address: string) => Promise<{ unshielded: bigint; shielded: bigint }>; getBlock: (number?: number) => Promise<unknown> };
+  };
+
+  let midnightProviderPromise: Promise<MidnightProvider | null> | null = null;
+
+  const getMidnightProvider = async (): Promise<MidnightProvider | null> => {
+    if (midnightProviderPromise === null) {
+      midnightProviderPromise = (async () => {
+        try {
+          // Dynamic import to avoid build-time dependency
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          const plugin = await (Function('return import("@nightcap/plugin-midnight-js")')() as Promise<{ getMidnightProvider?: (...args: unknown[]) => Promise<MidnightProvider> }>);
+          if (plugin && typeof plugin.getMidnightProvider === 'function') {
+            return plugin.getMidnightProvider(networkName, network, config);
+          }
+        } catch {
+          // Plugin not available
+        }
+        return null;
+      })();
+    }
+    return midnightProviderPromise;
+  };
+
+  // Deploy helper - uses midnight provider if available
+  const deployContract = async (name: string, args: unknown[] = []): Promise<unknown> => {
+    const provider = await getMidnightProvider();
+    if (provider) {
+      const factory = await provider.getContractFactory(name);
+      return factory.deploy(args);
+    }
     const artifact = getContract(name);
     logger.warn('deployContract requires midnight-js plugin integration');
-    logger.info('Contract artifact loaded, but deployment not yet implemented');
+    logger.info('Install @nightcap/plugin-midnight-js for full functionality');
     return { name, artifact, deployed: false };
   };
 
-  // Placeholder for getContractAt - requires midnight-js integration
+  // GetContractAt helper - uses midnight provider if available
   const getContractAt = async (name: string, address: string): Promise<unknown> => {
+    const provider = await getMidnightProvider();
+    if (provider) {
+      return provider.getContractAt(name, address);
+    }
     const artifact = getContract(name);
     logger.warn('getContractAt requires midnight-js plugin integration');
     return { name, address, artifact, connected: false };
   };
 
-  // Network query helpers (placeholders)
+  // Network query helpers - use midnight provider if available
   const getBalance = async (address: string): Promise<unknown> => {
+    const provider = await getMidnightProvider();
+    if (provider) {
+      return provider.indexer.getBalance(address);
+    }
     logger.warn('getBalance requires midnight-js plugin integration');
     return { address, shielded: 0n, unshielded: 0n };
   };
 
   const getBlock = async (number?: number): Promise<unknown> => {
+    const provider = await getMidnightProvider();
+    if (provider) {
+      return provider.indexer.getBlock(number);
+    }
     logger.warn('getBlock requires midnight-js plugin integration');
     return { number: number ?? 'latest', hash: null };
   };
@@ -184,6 +229,44 @@ ${colors.dim}Tip: Use 'await' for async operations${colors.reset}
 }
 
 /**
+ * Create custom completer for REPL auto-completion
+ */
+function createCompleter(
+  contextHelpers: string[],
+  contractNames: string[]
+): (line: string) => [string[], string] {
+  return (line: string): [string[], string] => {
+    // Check for contract name completion in function calls
+    const contractArgMatch = line.match(/(?:getContract|deployContract|getContractAt)\s*\(\s*['"]([^'"]*)?$/);
+    if (contractArgMatch) {
+      const partial = contractArgMatch[1] ?? '';
+      const matches = contractNames.filter(name =>
+        name.toLowerCase().startsWith(partial.toLowerCase())
+      );
+      return [matches.map(m => `${m}'`), partial];
+    }
+
+    // Check for helper function completion
+    const lastToken = line.split(/[\s()\[\]{};,]/).pop() ?? '';
+    if (lastToken) {
+      const allCompletions = [
+        ...contextHelpers,
+        ...contractNames.map(c => `'${c}'`),
+      ];
+      const matches = allCompletions.filter(c =>
+        c.toLowerCase().startsWith(lastToken.toLowerCase())
+      );
+      if (matches.length > 0) {
+        return [matches, lastToken];
+      }
+    }
+
+    // Default: no completions
+    return [[], line];
+  };
+}
+
+/**
  * Print welcome banner
  */
 function printBanner(networkName: string, network: NetworkConfig, contractCount: number): void {
@@ -224,13 +307,33 @@ export const consoleTask: TaskDefinition = {
     // Ensure history directory exists
     ensureHistoryDir();
 
-    // Create REPL
+    // Define completable context helpers
+    const contextHelpers = [
+      'config',
+      'network',
+      'networkName',
+      'contracts',
+      'getContract',
+      'listContracts',
+      'deployContract',
+      'getContractAt',
+      'getBalance',
+      'getBlock',
+      'help',
+    ];
+
+    // Create custom completer
+    const contractNames = Array.from(artifacts.keys());
+    const completer = createCompleter(contextHelpers, contractNames);
+
+    // Create REPL with custom completer
     const replServer = repl.start({
       prompt: `${colors.magenta}nightcap${colors.reset}:${colors.cyan}${networkName}${colors.reset}> `,
       useColors: true,
       useGlobal: false,
       ignoreUndefined: true,
       preview: true,
+      completer,
     });
 
     // Add context to REPL

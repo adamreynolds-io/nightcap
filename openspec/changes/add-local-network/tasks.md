@@ -47,7 +47,17 @@
 - [x] 7.3 Allow port customization to avoid conflicts
 - [ ] 7.4 Support resource limits (CPU, memory)
 
-## 8. Testing
-- [x] 8.1 Integration tests for stack startup/shutdown
-- [x] 8.2 Tests for state snapshot/restore
-- [ ] 8.3 E2E tests for forking scenarios
+## 8. Standalone Proof Server
+- [x] 8.1 Implement `nightcap proof-server` task for remote networks
+- [x] 8.2 Connect proof server to configurable node URL
+- [x] 8.3 Implement `nightcap proof-server:stop` command
+- [x] 8.4 Implement `nightcap proof-server:status` command
+- [x] 8.5 Implement `nightcap proof-server:logs` command
+- [x] 8.6 Update default configs to use localhost:6300 for all networks
+- [x] 8.7 Document proof server local-only requirement
+
+## 9. Testing
+- [x] 9.1 Integration tests for stack startup/shutdown
+- [x] 9.2 Tests for state snapshot/restore
+- [ ] 9.3 E2E tests for forking scenarios
+- [ ] 9.4 E2E tests for standalone proof server

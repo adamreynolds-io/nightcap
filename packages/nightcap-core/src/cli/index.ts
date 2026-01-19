@@ -19,10 +19,16 @@ import {
   PluginLoadError,
   ConfigValidationError,
 } from '../plugins/index.js';
-import type { NightcapConfig, TaskContext, TaskDefinition } from '../tasks/types.js';
-import type { NightcapUserConfig, ResolvedNightcapConfig, NightcapPlugin } from '../plugins/index.js';
+import type { NightcapConfig, TaskContext, TaskDefinition, RuntimeEnvironment } from '../tasks/types.js';
+import type { NightcapUserConfig, ResolvedNightcapConfig, NightcapPlugin, NightcapRuntimeEnvironment } from '../plugins/index.js';
 
 const VERSION = '0.0.1';
+
+/**
+ * Module-level runtime environment populated by plugins.
+ * This is set during CLI initialization and passed to task contexts.
+ */
+let runtimeEnv: RuntimeEnvironment | undefined;
 
 interface GlobalOptions {
   network: string;
@@ -140,6 +146,7 @@ function createTaskAction(
       networkName,
       params: options,
       verbose: globalOpts.verbose ?? false,
+      env: runtimeEnv,
     };
 
     // Add runSuper if this task has an original
@@ -299,30 +306,48 @@ async function main(): Promise<void> {
     process.exit(1);
   });
 
-  // Run runtime.created hooks if we have a resolved config
+  // Run runtime hooks if we have a resolved config
   if (resolvedConfig && hookManager) {
     try {
+      // Create the runtime environment
+      const runTaskFn = async (name: string, params?: Record<string, unknown>) => {
+        const task = registry.get(name);
+        if (!task) {
+          throw new Error(`Unknown task: ${name}`);
+        }
+        const networkName = resolvedConfig!.defaultNetwork ?? 'localnet';
+        const network = resolvedConfig!.networks?.[networkName];
+        if (!network) {
+          throw new Error(`Unknown network: ${networkName}`);
+        }
+        const context: TaskContext = {
+          config: resolvedConfig!,
+          network,
+          networkName,
+          params: params ?? {},
+          verbose: false,
+          env: runtimeEnv,
+        };
+        await runner.run(name, context);
+      };
+
+      // Create runtime environment for plugins to extend
+      const nightcapEnv: NightcapRuntimeEnvironment = {
+        config: resolvedConfig,
+        runTask: runTaskFn,
+      };
+
+      // Run extendEnvironment hooks - plugins add their namespaces here
+      await hookManager.runExtendEnvironmentHooks(nightcapEnv);
+
+      // Store the environment for task contexts (extract plugin extensions)
+      const { config: _config, runTask: _runTask, ...extensions } = nightcapEnv;
+      runtimeEnv = extensions;
+
+      // Run created hooks
       await hookManager.runRuntimeCreatedHooks({
         config: resolvedConfig,
-        runTask: async (name: string, params?: Record<string, unknown>) => {
-          const task = registry.get(name);
-          if (!task) {
-            throw new Error(`Unknown task: ${name}`);
-          }
-          const networkName = resolvedConfig!.defaultNetwork ?? 'localnet';
-          const network = resolvedConfig!.networks?.[networkName];
-          if (!network) {
-            throw new Error(`Unknown network: ${networkName}`);
-          }
-          const context: TaskContext = {
-            config: resolvedConfig!,
-            network,
-            networkName,
-            params: params ?? {},
-            verbose: false,
-          };
-          await runner.run(name, context);
-        },
+        runTask: runTaskFn,
       });
     } catch (error) {
       logger.error(

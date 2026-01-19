@@ -10,7 +10,7 @@
 - [x] 2.2 Provide `getContract(name)` helper for contract access
 - [x] 2.3 Provide `deployContract(name, args)` helper (placeholder)
 - [x] 2.4 Provide `getContractAt(name, address)` helper (placeholder)
-- [ ] 2.5 Support typed contract instances from artifacts
+- [ ] 2.5 Support typed contract instances from artifacts (blocked: requires midnight-js plugin)
 
 ## 3. Network Utilities
 - [x] 3.1 Expose indexer client for blockchain queries (placeholder)
@@ -20,12 +20,12 @@
 
 ## 4. REPL Enhancements
 - [x] 4.1 Add command history persistence (~/.nightcap/console_history)
-- [ ] 4.2 Add auto-completion for contract names and methods
+- [x] 4.2 Add auto-completion for contract names and methods
 - [x] 4.3 Add `.help` command showing available utilities
 - [x] 4.4 Add `.clear` command to reset context
 - [x] 4.5 Support top-level await for async operations
 
-## 5. Output Formatting
+## 5. Output Formatting (blocked: requires midnight-js plugin for real data)
 - [ ] 5.1 Pretty-print contract call results
 - [ ] 5.2 Format transaction receipts readably
 - [ ] 5.3 Display proof generation progress
@@ -34,4 +34,5 @@
 ## 6. Testing
 - [x] 6.1 Unit tests for console context setup
 - [x] 6.2 Unit tests for contract helpers
-- [ ] 6.3 Integration tests for REPL functionality
+- [ ] 6.3 Integration tests for REPL functionality (blocked: requires midnight-js plugin)
+- [ ] 6.4 E2E tests for console startup and basic commands

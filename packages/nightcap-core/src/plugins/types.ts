@@ -81,10 +81,31 @@ export interface ConfigHookHandlers {
  */
 export interface RuntimeHookHandlers {
   /**
+   * Extend the runtime environment with plugin-specific functionality.
+   * Called during environment setup, before any tasks run.
+   * Use this to add namespaced extensions (e.g., `env.midnight`).
+   */
+  extendEnvironment?: (env: NightcapRuntimeEnvironment) => void | Promise<void>;
+
+  /**
    * Called after runtime environment is created but before task execution.
    * Use this for initialization, logging, or setting up global state.
    */
   created?: (ctx: NightcapContext) => void | Promise<void>;
+}
+
+/**
+ * Runtime environment that plugins can extend
+ */
+export interface NightcapRuntimeEnvironment {
+  /** The resolved configuration */
+  config: ResolvedNightcapConfig;
+
+  /** Run a task by name */
+  runTask: (name: string, params?: Record<string, unknown>) => Promise<void>;
+
+  /** Plugin extensions - plugins add their namespaces here */
+  [key: string]: unknown;
 }
 
 /**

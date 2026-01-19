@@ -12,7 +12,7 @@ export { TaskRunner } from './tasks/runner.js';
 
 // Re-export config system
 export { loadConfig } from './config/loader.js';
-export { DEFAULT_NETWORKS } from './config/defaults.js';
+export { DEFAULT_NETWORKS, DEFAULT_PROOF_SERVER_URL } from './config/defaults.js';
 export { validateConfig } from './config/validator.js';
 
 // Re-export logger
@@ -26,6 +26,7 @@ export type {
   NightcapHookHandlers,
   ConfigHookHandlers,
   RuntimeHookHandlers,
+  NightcapRuntimeEnvironment,
   NightcapContext,
 } from './plugins/index.js';
 export {

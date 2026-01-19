@@ -79,6 +79,8 @@ export interface NightcapConfig {
     deploy?: string;
     /** Directory for generated TypeScript types */
     types?: string;
+    /** Directory for deployment history */
+    deployments?: string;
   };
 }
 
@@ -97,6 +99,14 @@ export interface TaskParamDefinition {
 }
 
 /**
+ * Runtime environment with plugin extensions
+ */
+export interface RuntimeEnvironment {
+  /** Plugin extensions - plugins add their namespaces here (e.g., env.midnight) */
+  [key: string]: unknown;
+}
+
+/**
  * Context passed to task actions
  */
 export interface TaskContext {
@@ -110,6 +120,11 @@ export interface TaskContext {
   params: Record<string, unknown>;
   /** Whether verbose output is enabled */
   verbose: boolean;
+  /**
+   * Runtime environment with plugin extensions.
+   * Access plugin features via this object (e.g., context.env.midnight).
+   */
+  env?: RuntimeEnvironment;
   /**
    * Run the original task when overriding a built-in task.
    * Only available when the current task overrides another task.

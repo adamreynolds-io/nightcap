@@ -378,7 +378,7 @@ export default defineConfig({
       name: 'mynet',
       nodeUrl: 'https://node.mynet.example.com',
       indexerUrl: 'https://indexer.mynet.example.com/api/v1/graphql',
-      proofServerUrl: 'https://proof.mynet.example.com',
+      proofServerUrl: 'http://localhost:6300',  // Always local!
     },
   },
 });

@@ -8,24 +8,24 @@
 ## 2. Plugin Capabilities
 - [x] 2.1 Allow plugins to register tasks
 - [x] 2.2 Allow plugins to extend configuration schema
-- [x] 2.3 Allow plugins to add runtime extensions
+- [x] 2.3 Allow plugins to add runtime extensions via `extendEnvironment` hook
 - [x] 2.4 Allow plugins to override built-in tasks
 - [ ] 2.5 Provide inter-plugin communication hooks
 
 ## 3. midnight-js Plugin
-- [ ] 3.1 Create `@nightcap/plugin-midnight-js` package
-- [ ] 3.2 Integrate midnight-js/contracts for contract interaction
+- [x] 3.1 Create `@nightcap/plugin-midnight-js` package
+- [x] 3.2 Integrate midnight-js/contracts for contract interaction
 - [ ] 3.3 Integrate midnight-js/types for type generation
-- [ ] 3.4 Add indexer-public-data-provider integration
-- [ ] 3.5 Add http-client-proof-provider integration
-- [ ] 3.6 Add level-private-state-provider for persistent state
-- [ ] 3.7 Add fetch-zk-config-provider for ZK artifacts
+- [x] 3.4 Add indexer-public-data-provider integration
+- [x] 3.5 Add http-client-proof-provider integration
+- [x] 3.6 Add level-private-state-provider for persistent state
+- [x] 3.7 Add fetch-zk-config-provider for ZK artifacts
 
 ## 4. Contract Factory Extension
-- [ ] 4.1 Extend nightcap with `getContractFactory()` from midnight-js
+- [x] 4.1 Extend nightcap with `getContractFactory()` from midnight-js
 - [ ] 4.2 Provide typed contract instances
-- [ ] 4.3 Support contract deployment with midnight-js
-- [ ] 4.4 Handle private state in contract interactions
+- [x] 4.3 Support contract deployment with midnight-js
+- [x] 4.4 Handle private state in contract interactions
 
 ## 5. Wallet Integration (via plugin)
 - [ ] 5.1 Provide wallet connection utilities
@@ -40,5 +40,6 @@
 
 ## 7. Testing
 - [x] 7.1 Unit tests for plugin loading
-- [ ] 7.2 Integration tests for midnight-js plugin
+- [x] 7.2 Integration tests for midnight-js plugin
 - [ ] 7.3 E2E tests for plugin task extension
+- [ ] 7.4 E2E tests for `extendEnvironment` hook with env.midnight namespace

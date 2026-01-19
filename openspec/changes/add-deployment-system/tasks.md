@@ -34,12 +34,13 @@
 - [ ] 6.4 Track upgrade history
 
 ## 7. Scripts
-- [ ] 7.1 Support standalone deployment scripts
-- [ ] 7.2 Implement `nightcap run` for script execution
-- [ ] 7.3 Provide script context with network and signers
+- [x] 7.1 Support standalone deployment scripts
+- [x] 7.2 Implement `nightcap run` for script execution
+- [x] 7.3 Provide script context with network and signers
 
 ## 8. Testing
 - [x] 8.1 Unit tests for module resolution
 - [ ] 8.2 Integration tests for deployment flow
 - [ ] 8.3 E2E tests for network deployments
 - [x] 8.4 Tests for deployment history tracking
+- [ ] 8.5 E2E tests for `nightcap run` script execution
