@@ -114,6 +114,31 @@ The system SHALL generate TypeScript declaration files for type-safe contract in
 - **WHEN** TypeScript types are generated
 - **THEN** types are compatible with midnight-js contract interaction patterns
 
+### Requirement: Contract Circuit Inspection
+The system SHALL use runtime inspection to discover available circuits from compiled contracts.
+
+Reference: [midnight-contracts/test-runner](https://github.com/midnight-ntwrk/midnight-contracts/tree/main/packages/test-runner)
+
+#### Scenario: Dynamic import of compiled contract
+- **WHEN** extracting circuit information from compiled contract
+- **THEN** dynamically import the compiled module using `file://` URL with cache-busting
+- **THEN** instantiate the Contract class with empty configuration
+
+#### Scenario: Extract impure circuits
+- **WHEN** contract module is loaded
+- **THEN** access `contractInstance.impureCircuits` property
+- **THEN** extract circuit names from object keys
+
+#### Scenario: Extract witness functions
+- **WHEN** contract module is loaded
+- **THEN** access `contractInstance.witnesses` property
+- **THEN** extract witness names from object keys
+
+#### Scenario: Handle missing Contract class
+- **WHEN** compiled module does not export a Contract class
+- **THEN** log debug message and return empty circuit list
+- **THEN** continue with basic metadata (no circuit information)
+
 ### Requirement: Compilation Caching
 The system SHALL cache compilation results to avoid redundant work.
 
