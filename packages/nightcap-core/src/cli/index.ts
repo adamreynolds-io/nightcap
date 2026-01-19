@@ -11,7 +11,16 @@ import { TaskRunner } from '../tasks/runner.js';
 import { registerBuiltinTasks } from '../tasks/builtin/index.js';
 import { logger, LogLevel } from '../utils/logger.js';
 import { generateCompletion, getSupportedShells, type ShellType } from './completion.js';
+import {
+  resolvePluginList,
+  HookManager,
+  PluginValidationError,
+  PluginDependencyCycleError,
+  PluginLoadError,
+  ConfigValidationError,
+} from '../plugins/index.js';
 import type { NightcapConfig, TaskContext, TaskDefinition } from '../tasks/types.js';
+import type { NightcapUserConfig, ResolvedNightcapConfig, NightcapPlugin } from '../plugins/index.js';
 
 const VERSION = '0.0.1';
 
@@ -38,6 +47,50 @@ function registerCustomTasks(registry: TaskRegistry, config: NightcapConfig): vo
       logger.warn(`Failed to register custom task '${name}': ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+}
+
+/**
+ * Register tasks from plugins
+ */
+function registerPluginTasks(registry: TaskRegistry, plugins: NightcapPlugin[]): void {
+  for (const plugin of plugins) {
+    if (!plugin.tasks) {
+      continue;
+    }
+    for (const task of plugin.tasks) {
+      try {
+        registry.register(task);
+        logger.debug(`Registered task '${task.name}' from plugin '${plugin.id}'`);
+      } catch (error) {
+        logger.warn(
+          `Failed to register task '${task.name}' from plugin '${plugin.id}': ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Handle plugin-related errors with helpful messages
+ */
+function handlePluginError(error: unknown): never {
+  if (error instanceof PluginValidationError) {
+    logger.error(`Plugin validation error: ${error.message}`);
+  } else if (error instanceof PluginDependencyCycleError) {
+    logger.error(`Circular plugin dependency: ${error.cycle.join(' -> ')}`);
+  } else if (error instanceof PluginLoadError) {
+    logger.error(`Failed to load plugin dependency: ${error.message}`);
+  } else if (error instanceof ConfigValidationError) {
+    logger.error('Configuration validation failed:');
+    for (const err of error.errors) {
+      logger.error(`  - ${err}`);
+    }
+  } else {
+    logger.error(`Plugin error: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  process.exit(1);
 }
 
 /**
@@ -147,18 +200,49 @@ async function main(): Promise<void> {
   const registry = new TaskRegistry();
   registerBuiltinTasks(registry);
 
-  // Pre-load config to register custom tasks
-  // We need to do this before setting up Commander commands
-  let preloadedConfig: NightcapConfig | undefined;
+  // Pre-load config and plugins before setting up Commander commands
+  let resolvedConfig: ResolvedNightcapConfig | undefined;
+  let hookManager: HookManager | undefined;
+
   try {
     // Check for --config flag in argv
     const configArgIndex = process.argv.indexOf('--config');
     const configPath = configArgIndex !== -1 ? process.argv[configArgIndex + 1] : undefined;
-    preloadedConfig = await loadConfig(configPath);
-    registerCustomTasks(registry, preloadedConfig);
-  } catch {
-    // Config loading may fail here, but that's OK - we'll handle errors later
-    // when executing tasks. This is just for registering custom tasks.
+    const userConfig = (await loadConfig(configPath)) as NightcapUserConfig;
+
+    // Resolve plugins (topological sort via DFS)
+    const plugins = await resolvePluginList(userConfig.plugins ?? []);
+
+    // Create hook manager and register plugins
+    hookManager = new HookManager();
+    for (const plugin of plugins) {
+      hookManager.registerPlugin(plugin);
+      logger.debug(`Registered plugin: ${plugin.id}`);
+    }
+
+    // Run config hooks to get resolved config
+    resolvedConfig = await hookManager.runConfigHooks(userConfig, plugins);
+
+    // Register custom tasks from config
+    registerCustomTasks(registry, resolvedConfig);
+
+    // Register tasks from plugins (later plugins can override earlier ones)
+    registerPluginTasks(registry, plugins);
+  } catch (error) {
+    // Check if this is a plugin-related error
+    if (
+      error instanceof PluginValidationError ||
+      error instanceof PluginDependencyCycleError ||
+      error instanceof PluginLoadError ||
+      error instanceof ConfigValidationError
+    ) {
+      handlePluginError(error);
+    }
+    // Config loading may fail here, but that's OK for some commands
+    // We'll handle errors later when executing tasks that need config
+    logger.debug(
+      `Config preload failed: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   // Create task runner
@@ -191,7 +275,7 @@ async function main(): Promise<void> {
       console.log(script);
     });
 
-  // Register all tasks (built-in + custom) as commands
+  // Register all tasks (built-in + custom + plugin) as commands
   for (const task of registry.getAllTasks()) {
     registerCommand(program, task, registry, runner);
   }
@@ -214,6 +298,39 @@ async function main(): Promise<void> {
     logger.info('Run "nightcap --help" for available commands');
     process.exit(1);
   });
+
+  // Run runtime.created hooks if we have a resolved config
+  if (resolvedConfig && hookManager) {
+    try {
+      await hookManager.runRuntimeCreatedHooks({
+        config: resolvedConfig,
+        runTask: async (name: string, params?: Record<string, unknown>) => {
+          const task = registry.get(name);
+          if (!task) {
+            throw new Error(`Unknown task: ${name}`);
+          }
+          const networkName = resolvedConfig!.defaultNetwork ?? 'localnet';
+          const network = resolvedConfig!.networks?.[networkName];
+          if (!network) {
+            throw new Error(`Unknown network: ${networkName}`);
+          }
+          const context: TaskContext = {
+            config: resolvedConfig!,
+            network,
+            networkName,
+            params: params ?? {},
+            verbose: false,
+          };
+          await runner.run(name, context);
+        },
+      });
+    } catch (error) {
+      logger.error(
+        `Runtime hook failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      process.exit(1);
+    }
+  }
 
   // Parse with all commands registered
   await program.parseAsync(process.argv);

@@ -18,6 +18,26 @@ export { validateConfig } from './config/validator.js';
 // Re-export logger
 export { logger, LogLevel } from './utils/logger.js';
 
+// Re-export plugin system
+export type {
+  NightcapPlugin,
+  NightcapUserConfig,
+  ResolvedNightcapConfig,
+  NightcapHookHandlers,
+  ConfigHookHandlers,
+  RuntimeHookHandlers,
+  NightcapContext,
+} from './plugins/index.js';
+export {
+  resolvePluginList,
+  HookManager,
+  validatePlugin,
+  PluginValidationError,
+  PluginDependencyCycleError,
+  PluginLoadError,
+  ConfigValidationError,
+} from './plugins/index.js';
+
 // Re-export compiler
 export { CompilerManager } from './compiler/index.js';
 export type { CompilerVersion, CompilationResult } from './compiler/index.js';
