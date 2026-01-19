@@ -4,7 +4,7 @@
  */
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import { writeFile, mkdir, rm } from 'node:fs/promises';
+import { writeFile, mkdir, rm, cp, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DockerClient } from './docker-client.js';
@@ -258,6 +258,214 @@ export class StackManager {
     }
 
     return { success: true };
+  }
+
+  /**
+   * Get the snapshots directory path
+   */
+  private getSnapshotsDir(): string {
+    return join(this.projectDir, '.nightcap', 'snapshots');
+  }
+
+  /**
+   * Get the data directory path
+   */
+  private getDataDir(): string {
+    return join(this.projectDir, '.nightcap', 'data');
+  }
+
+  /**
+   * Create a snapshot of the current state
+   */
+  async createSnapshot(name: string): Promise<{ success: boolean; error?: string; path?: string }> {
+    // Validate snapshot name (alphanumeric, dashes, underscores only)
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return {
+        success: false,
+        error: 'Snapshot name must contain only alphanumeric characters, dashes, and underscores',
+      };
+    }
+
+    const dataDir = this.getDataDir();
+    const snapshotsDir = this.getSnapshotsDir();
+    const snapshotPath = join(snapshotsDir, name);
+
+    // Check if data directory exists
+    if (!existsSync(dataDir)) {
+      return {
+        success: false,
+        error: 'No data directory found. Start the node first to create some state.',
+      };
+    }
+
+    // Check if snapshot already exists
+    if (existsSync(snapshotPath)) {
+      return {
+        success: false,
+        error: `Snapshot '${name}' already exists. Delete it first or choose a different name.`,
+      };
+    }
+
+    // Stop stack to ensure clean snapshot
+    const wasRunning = (await this.getStatus()).running;
+    if (wasRunning) {
+      await this.stop();
+    }
+
+    try {
+      // Create snapshots directory if needed
+      await mkdir(snapshotsDir, { recursive: true });
+
+      // Copy data directory to snapshot
+      await cp(dataDir, snapshotPath, { recursive: true });
+
+      // Write metadata
+      const metadata = {
+        name,
+        createdAt: new Date().toISOString(),
+        projectName: this.getProjectName(),
+      };
+      await writeFile(join(snapshotPath, 'snapshot.json'), JSON.stringify(metadata, null, 2));
+
+      // Restart stack if it was running
+      if (wasRunning) {
+        await this.start();
+      }
+
+      return { success: true, path: snapshotPath };
+    } catch (error) {
+      // Try to restart if it was running
+      if (wasRunning) {
+        await this.start();
+      }
+
+      return {
+        success: false,
+        error: `Failed to create snapshot: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  /**
+   * Restore from a snapshot
+   */
+  async restoreSnapshot(name: string): Promise<{ success: boolean; error?: string }> {
+    const dataDir = this.getDataDir();
+    const snapshotsDir = this.getSnapshotsDir();
+    const snapshotPath = join(snapshotsDir, name);
+
+    // Check if snapshot exists
+    if (!existsSync(snapshotPath)) {
+      return {
+        success: false,
+        error: `Snapshot '${name}' not found`,
+      };
+    }
+
+    // Stop stack first
+    const wasRunning = (await this.getStatus()).running;
+    if (wasRunning) {
+      await this.stop();
+    }
+
+    // Remove docker volumes
+    await this.runDockerCompose(['down', '-v']);
+
+    try {
+      // Remove existing data
+      if (existsSync(dataDir)) {
+        await rm(dataDir, { recursive: true, force: true });
+      }
+
+      // Copy snapshot to data directory
+      await cp(snapshotPath, dataDir, { recursive: true });
+
+      // Remove snapshot metadata from restored data
+      const metadataPath = join(dataDir, 'snapshot.json');
+      if (existsSync(metadataPath)) {
+        await rm(metadataPath);
+      }
+
+      // Restart stack if it was running
+      if (wasRunning) {
+        await this.start();
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to restore snapshot: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  /**
+   * List available snapshots
+   */
+  async listSnapshots(): Promise<Array<{ name: string; createdAt: string; path: string }>> {
+    const snapshotsDir = this.getSnapshotsDir();
+
+    if (!existsSync(snapshotsDir)) {
+      return [];
+    }
+
+    const entries = await readdir(snapshotsDir, { withFileTypes: true });
+    const snapshots: Array<{ name: string; createdAt: string; path: string }> = [];
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      const snapshotPath = join(snapshotsDir, entry.name);
+      const metadataPath = join(snapshotPath, 'snapshot.json');
+
+      let createdAt = 'unknown';
+      if (existsSync(metadataPath)) {
+        try {
+          const { readFile } = await import('node:fs/promises');
+          const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
+          createdAt = metadata.createdAt ?? 'unknown';
+        } catch {
+          // Ignore metadata parsing errors
+        }
+      }
+
+      snapshots.push({
+        name: entry.name,
+        createdAt,
+        path: snapshotPath,
+      });
+    }
+
+    // Sort by creation date (newest first)
+    snapshots.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    return snapshots;
+  }
+
+  /**
+   * Delete a snapshot
+   */
+  async deleteSnapshot(name: string): Promise<{ success: boolean; error?: string }> {
+    const snapshotsDir = this.getSnapshotsDir();
+    const snapshotPath = join(snapshotsDir, name);
+
+    if (!existsSync(snapshotPath)) {
+      return {
+        success: false,
+        error: `Snapshot '${name}' not found`,
+      };
+    }
+
+    try {
+      await rm(snapshotPath, { recursive: true, force: true });
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to delete snapshot: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
   }
 
   /**

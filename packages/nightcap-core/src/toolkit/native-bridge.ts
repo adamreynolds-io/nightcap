@@ -6,7 +6,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir, platform, arch } from 'node:os';
+import { homedir, platform } from 'node:os';
 import type {
   ToolkitConfig,
   ToolkitCommandOptions,

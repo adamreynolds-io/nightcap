@@ -39,7 +39,7 @@ export class Toolkit {
   /**
    * Create a Toolkit instance from Nightcap config and network
    */
-  static fromConfig(config: NightcapConfig, network: NetworkConfig): Toolkit {
+  static fromConfig(config: NightcapConfig, _network: NetworkConfig): Toolkit {
     return new Toolkit({
       image: config.docker?.images?.toolkit,
       workDir: process.cwd(),

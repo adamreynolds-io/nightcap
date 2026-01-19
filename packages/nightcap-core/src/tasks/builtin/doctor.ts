@@ -231,7 +231,7 @@ async function checkRegistryConnectivity(): Promise<CheckResult> {
 
       clearTimeout(timeoutId);
 
-      const isReachable = endpoint.acceptCodes.includes(response.status);
+      const isReachable = (endpoint.acceptCodes as readonly number[]).includes(response.status);
       results.push({ name: endpoint.name, reachable: isReachable });
     } catch (error) {
       const errorMessage =

@@ -458,3 +458,145 @@ function displayStatus(status: { running: boolean; services: Record<ServiceName,
     logger.log(`  ${stateIcon} ${svc.name.padEnd(12)} ${state.padEnd(10)} ${url}`);
   }
 }
+
+/**
+ * Node snapshot task - create a snapshot of the current state
+ */
+export const nodeSnapshotTask: TaskDefinition = {
+  name: 'node:snapshot',
+  description: 'Create a snapshot of the local network state',
+  params: {
+    name: {
+      type: 'string',
+      description: 'Name for the snapshot',
+      required: true,
+    },
+  },
+
+  async action(context: TaskContext): Promise<void> {
+    const stack = createStackManager(context);
+    const name = context.params['name'] as string;
+
+    if (!name) {
+      logger.error('Snapshot name is required');
+      logger.info('Usage: nightcap node:snapshot --name <snapshot-name>');
+      throw new Error('Snapshot name required');
+    }
+
+    logger.info(`Creating snapshot '${name}'...`);
+
+    const result = await stack.createSnapshot(name);
+
+    if (!result.success) {
+      throw new Error(result.error ?? 'Failed to create snapshot');
+    }
+
+    logger.success(`Snapshot '${name}' created successfully`);
+    if (result.path) {
+      logger.info(`Location: ${result.path}`);
+    }
+  },
+};
+
+/**
+ * Node restore task - restore from a snapshot
+ */
+export const nodeRestoreTask: TaskDefinition = {
+  name: 'node:restore',
+  description: 'Restore local network state from a snapshot',
+  params: {
+    name: {
+      type: 'string',
+      description: 'Name of the snapshot to restore',
+      required: true,
+    },
+  },
+
+  async action(context: TaskContext): Promise<void> {
+    const stack = createStackManager(context);
+    const name = context.params['name'] as string;
+
+    if (!name) {
+      logger.error('Snapshot name is required');
+      logger.info('Usage: nightcap node:restore --name <snapshot-name>');
+      throw new Error('Snapshot name required');
+    }
+
+    logger.info(`Restoring snapshot '${name}'...`);
+
+    const result = await stack.restoreSnapshot(name);
+
+    if (!result.success) {
+      throw new Error(result.error ?? 'Failed to restore snapshot');
+    }
+
+    logger.success(`Snapshot '${name}' restored successfully`);
+    logger.info('Run "nightcap node" to start the network with restored state');
+  },
+};
+
+/**
+ * Node snapshots task - list available snapshots
+ */
+export const nodeSnapshotsTask: TaskDefinition = {
+  name: 'node:snapshots',
+  description: 'List available state snapshots',
+
+  async action(context: TaskContext): Promise<void> {
+    const stack = createStackManager(context);
+
+    const snapshots = await stack.listSnapshots();
+
+    if (snapshots.length === 0) {
+      logger.info('No snapshots found');
+      logger.info('Create one with: nightcap node:snapshot --name <name>');
+      return;
+    }
+
+    logger.info(`Found ${snapshots.length} snapshot(s):`);
+    logger.newline();
+
+    for (const snapshot of snapshots) {
+      const date = snapshot.createdAt !== 'unknown'
+        ? new Date(snapshot.createdAt).toLocaleString()
+        : 'unknown';
+      logger.log(`  ${snapshot.name.padEnd(20)} ${date}`);
+    }
+  },
+};
+
+/**
+ * Node snapshot delete task - delete a snapshot
+ */
+export const nodeSnapshotDeleteTask: TaskDefinition = {
+  name: 'node:snapshot:delete',
+  description: 'Delete a state snapshot',
+  params: {
+    name: {
+      type: 'string',
+      description: 'Name of the snapshot to delete',
+      required: true,
+    },
+  },
+
+  async action(context: TaskContext): Promise<void> {
+    const stack = createStackManager(context);
+    const name = context.params['name'] as string;
+
+    if (!name) {
+      logger.error('Snapshot name is required');
+      logger.info('Usage: nightcap node:snapshot:delete --name <snapshot-name>');
+      throw new Error('Snapshot name required');
+    }
+
+    logger.info(`Deleting snapshot '${name}'...`);
+
+    const result = await stack.deleteSnapshot(name);
+
+    if (!result.success) {
+      throw new Error(result.error ?? 'Failed to delete snapshot');
+    }
+
+    logger.success(`Snapshot '${name}' deleted`);
+  },
+};

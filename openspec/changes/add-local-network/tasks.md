@@ -28,10 +28,12 @@
 - [ ] 4.4 Allow custom initial balances via config
 
 ## 5. State Management
-- [ ] 5.1 Implement state snapshot via volume backup
-- [ ] 5.2 Add `nightcap node:snapshot <name>` command
-- [ ] 5.3 Add `nightcap node:restore <name>` command
-- [ ] 5.4 Store snapshots in `.nightcap/snapshots/`
+- [x] 5.1 Implement state snapshot via volume backup
+- [x] 5.2 Add `nightcap node:snapshot <name>` command
+- [x] 5.3 Add `nightcap node:restore <name>` command
+- [x] 5.4 Store snapshots in `.nightcap/snapshots/`
+- [x] 5.5 Add `nightcap node:snapshots` to list available snapshots
+- [x] 5.6 Add `nightcap node:snapshot:delete <name>` command
 
 ## 6. Network Forking
 - [ ] 6.1 Implement `nightcap node --fork testnet` flag
@@ -47,5 +49,5 @@
 
 ## 8. Testing
 - [x] 8.1 Integration tests for stack startup/shutdown
-- [ ] 8.2 Tests for state snapshot/restore
+- [x] 8.2 Tests for state snapshot/restore
 - [ ] 8.3 E2E tests for forking scenarios

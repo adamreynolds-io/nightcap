@@ -13,6 +13,10 @@ import {
   nodeLogsTask,
   nodeResetTask,
   nodeExecTask,
+  nodeSnapshotTask,
+  nodeRestoreTask,
+  nodeSnapshotsTask,
+  nodeSnapshotDeleteTask,
 } from './node.js';
 import {
   compileTask,
@@ -42,6 +46,10 @@ export function registerBuiltinTasks(registry: TaskRegistry): void {
   registry.register(nodeLogsTask);
   registry.register(nodeResetTask);
   registry.register(nodeExecTask);
+  registry.register(nodeSnapshotTask);
+  registry.register(nodeRestoreTask);
+  registry.register(nodeSnapshotsTask);
+  registry.register(nodeSnapshotDeleteTask);
 
   // Compile tasks
   registry.register(compileTask);

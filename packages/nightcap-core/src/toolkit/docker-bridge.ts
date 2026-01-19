@@ -4,8 +4,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import type {
   ToolkitConfig,
@@ -13,7 +12,6 @@ import type {
   ToolkitResult,
   ToolkitEndpoint,
   ToolkitError,
-  ToolkitErrorCode,
 } from './types.js';
 import { DEFAULT_TOOLKIT_IMAGE, TOOLKIT_ERROR_CODES } from './types.js';
 import { logger } from '../utils/logger.js';
