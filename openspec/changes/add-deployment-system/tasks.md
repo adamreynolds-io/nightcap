@@ -39,7 +39,7 @@
 - [ ] 7.3 Provide script context with network and signers
 
 ## 8. Testing
-- [ ] 8.1 Unit tests for module resolution
+- [x] 8.1 Unit tests for module resolution
 - [ ] 8.2 Integration tests for deployment flow
 - [ ] 8.3 E2E tests for network deployments
-- [ ] 8.4 Tests for deployment history tracking
+- [x] 8.4 Tests for deployment history tracking
