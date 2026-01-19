@@ -458,6 +458,80 @@ nightcap compiler:install --compiler-version <version> [options]
 nightcap compiler:install --compiler-version 0.26.0
 ```
 
+## Testing Commands
+
+### test
+
+Run contract tests using Vitest.
+
+```bash
+nightcap test [options]
+```
+
+**Options:**
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--watch` | boolean | Run in watch mode | `false` |
+| `--bail` | boolean | Stop on first test failure | `false` |
+| `--grep <pattern>` | string | Filter tests by name pattern | - |
+| `--reporter <format>` | string | Reporter format (`default`, `verbose`, `json`, `junit`) | `default` |
+| `--coverage` | boolean | Enable code coverage | `false` |
+| `--no-compile` | boolean | Skip contract compilation before testing | `false` |
+| `--parallel` | boolean | Run tests in parallel | `true` |
+| `--workers <count>` | number | Number of parallel workers | Auto |
+| `--update` | boolean | Update snapshots | `false` |
+
+**Examples:**
+
+```bash
+# Run all tests
+nightcap test
+
+# Run tests in watch mode
+nightcap test --watch
+
+# Run specific tests by name
+nightcap test --grep "transfer"
+
+# Run with coverage report
+nightcap test --coverage
+
+# Stop on first failure
+nightcap test --bail
+
+# Skip compilation (faster for iterating on tests)
+nightcap test --no-compile
+```
+
+### coverage
+
+Run tests with code coverage enabled.
+
+```bash
+nightcap coverage [options]
+```
+
+**Options:**
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--threshold <percent>` | number | Minimum coverage threshold percentage | - |
+| `--reporter <format>` | string | Coverage reporter (`text`, `lcov`, `html`, `json`) | `text` |
+
+**Examples:**
+
+```bash
+# Run with coverage
+nightcap coverage
+
+# Require 80% coverage
+nightcap coverage --threshold 80
+
+# Generate HTML coverage report
+nightcap coverage --reporter html
+```
+
 ## Deployment Commands
 
 ### deploy

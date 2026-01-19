@@ -1,0 +1,47 @@
+{
+  "name": "@nightcap/test",
+  "version": "0.0.1",
+  "description": "Testing utilities for Nightcap contracts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./matchers": {
+      "types": "./dist/matchers/index.d.ts",
+      "import": "./dist/matchers/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "vitest": "^2.1.0"
+  },
+  "peerDependencies": {
+    "@nightcap/core": ">=0.0.1"
+  },
+  "optionalDependencies": {
+    "@nightcap/plugin-midnight-js": ">=0.0.1"
+  },
+  "devDependencies": {
+    "@nightcap/core": "workspace:*",
+    "@nightcap/plugin-midnight-js": "workspace:*",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "Apache-2.0"
+}

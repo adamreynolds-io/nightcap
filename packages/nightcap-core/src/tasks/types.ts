@@ -81,6 +81,8 @@ export interface NightcapConfig {
     types?: string;
     /** Directory for deployment history */
     deployments?: string;
+    /** Directory for test files */
+    tests?: string;
   };
 }
 

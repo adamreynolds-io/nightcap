@@ -52,6 +52,22 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.7)
 
+  packages/nightcap-test:
+    dependencies:
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@20.19.30)
+    devDependencies:
+      '@nightcap/core':
+        specifier: workspace:*
+        version: link:../nightcap-core
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/plugin-midnight-js:
     dependencies:
       level:

@@ -244,6 +244,7 @@ interface PathsConfig {
 | `deploy` | `./deploy` |
 | `types` | `./typechain` |
 | `deployments` | `./deployments` |
+| `tests` | `./test` |
 
 ### Paths Configuration Example
 
@@ -256,6 +257,7 @@ export default defineConfig({
     sources: './src/contracts',
     deploy: './scripts/deploy',
     types: './src/types',
+    tests: './src/test',
   },
 });
 ```

@@ -36,6 +36,7 @@ import {
 } from './proof-server.js';
 import { consoleTask } from './console.js';
 import { runTask } from './run.js';
+import { testTask, coverageTask } from './test.js';
 
 /**
  * Register all built-in tasks with the registry
@@ -80,4 +81,8 @@ export function registerBuiltinTasks(registry: TaskRegistry): void {
 
   // Script runner
   registry.register(runTask);
+
+  // Test tasks
+  registry.register(testTask);
+  registry.register(coverageTask);
 }
