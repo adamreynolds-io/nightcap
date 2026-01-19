@@ -114,6 +114,39 @@ The system SHALL handle project dependency installation.
 - **WHEN** user runs `nightcap init --skip-install`
 - **THEN** generate files but do not run dependency installation
 
+### Requirement: Contract-Based Scaffolding
+The system SHALL support scaffolding a new project from an existing compiled contract.
+
+#### Scenario: Initialize from compiled contract
+- **WHEN** user runs `nightcap init --from-contract <path>`
+- **THEN** load the compiled contract from the specified path
+- **THEN** extract circuit information from the contract
+- **THEN** generate project with contract-aware scaffolding
+- **THEN** copy compiled artifacts to the new project
+
+#### Scenario: Generate circuit handlers
+- **WHEN** initializing from a compiled contract
+- **THEN** generate `src/circuits/{circuitName}.ts` for each impure circuit
+- **THEN** include typed interface placeholders for parameters and results
+- **THEN** generate `src/circuits/index.ts` that re-exports all handlers
+
+#### Scenario: Generate contract wrapper
+- **WHEN** initializing from a compiled contract
+- **THEN** generate `src/contract.ts` with typed contract wrapper
+- **THEN** include connection utilities and type definitions
+- **THEN** re-export the compiled contract module
+
+#### Scenario: Derive project name from contract
+- **WHEN** user runs `nightcap init --from-contract <path>` without `--name`
+- **THEN** derive project name from contract name in camelCase
+- **WHEN** user provides `--name` flag
+- **THEN** use the provided name instead
+
+#### Scenario: Invalid contract path
+- **WHEN** user runs `nightcap init --from-contract <invalid-path>`
+- **THEN** display error message indicating path does not contain valid compiled contract
+- **THEN** suggest expected structure (index.cjs in contract/ subdirectory)
+
 ### Requirement: Project Documentation
 The system SHALL generate helpful documentation files.
 

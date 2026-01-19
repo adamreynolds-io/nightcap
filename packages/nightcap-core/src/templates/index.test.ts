@@ -18,7 +18,12 @@ import {
   generateCliFiles,
   generateReactFiles,
   getTemplateFiles,
+  getContractAwareTemplateFiles,
+  generateContractAwarePackageJson,
+  generateContractAwareReadme,
+  generateContractAwareFiles,
   type ProjectConfig,
+  type LoadedContractForTemplate,
 } from './index.js';
 
 describe('TEMPLATES', () => {
@@ -380,5 +385,197 @@ describe('generatePackageJson with interfaces', () => {
     expect(pkg.bin).toBeDefined();
     expect(pkg.scripts.dev).toBeDefined();
     expect(pkg.scripts['build:web']).toBeDefined();
+  });
+});
+
+// Contract-aware template generation tests
+describe('Contract-Aware Template Generation', () => {
+  const mockContract: LoadedContractForTemplate = {
+    name: 'Counter',
+    circuits: [
+      { name: 'increment', isImpure: true },
+      { name: 'decrement', isImpure: true },
+      { name: 'getValue', isImpure: false },
+    ],
+    modulePath: '/path/to/contract/index.cjs',
+  };
+
+  const mockConfig: ProjectConfig = {
+    name: 'my-counter-app',
+    template: 'dapp',
+    description: 'A counter dApp',
+  };
+
+  describe('getContractAwareTemplateFiles', () => {
+    it('should generate all necessary files', () => {
+      const files = getContractAwareTemplateFiles(mockConfig, mockContract);
+      const paths = files.map((f) => f.path);
+
+      // Common files
+      expect(paths).toContain('nightcap.config.ts');
+      expect(paths).toContain('package.json');
+      expect(paths).toContain('tsconfig.json');
+      expect(paths).toContain('.gitignore');
+      expect(paths).toContain('README.md');
+
+      // Contract-specific files
+      expect(paths).toContain('src/index.ts');
+      expect(paths).toContain('src/contract.ts');
+      expect(paths).toContain('src/circuits/index.ts');
+
+      // Circuit handlers for impure circuits only
+      expect(paths).toContain('src/circuits/increment.ts');
+      expect(paths).toContain('src/circuits/decrement.ts');
+      expect(paths).not.toContain('src/circuits/getValue.ts');
+
+      // Test file
+      expect(paths).toContain('test/Counter.test.ts');
+    });
+
+    it('should not include contracts directory', () => {
+      const files = getContractAwareTemplateFiles(mockConfig, mockContract);
+      const paths = files.map((f) => f.path);
+
+      // Should not include contracts/Counter.compact since we're using existing contract
+      const hasContracts = paths.some((p) => p.startsWith('contracts/'));
+      expect(hasContracts).toBe(false);
+    });
+  });
+
+  describe('generateContractAwarePackageJson', () => {
+    it('should include midnight-js dependencies', () => {
+      const result = generateContractAwarePackageJson(mockConfig, mockContract);
+      const pkg = JSON.parse(result);
+
+      expect(pkg.dependencies['@midnight-ntwrk/midnight-js-contracts']).toBeDefined();
+      expect(pkg.dependencies['@midnight-ntwrk/midnight-js-types']).toBeDefined();
+    });
+
+    it('should use provided project name', () => {
+      const result = generateContractAwarePackageJson(mockConfig, mockContract);
+      const pkg = JSON.parse(result);
+
+      expect(pkg.name).toBe('my-counter-app');
+    });
+
+    it('should include contract name in keywords', () => {
+      const result = generateContractAwarePackageJson(mockConfig, mockContract);
+      const pkg = JSON.parse(result);
+
+      expect(pkg.keywords).toContain('counter');
+    });
+
+    it('should include vitest for testing', () => {
+      const result = generateContractAwarePackageJson(mockConfig, mockContract);
+      const pkg = JSON.parse(result);
+
+      expect(pkg.devDependencies.vitest).toBeDefined();
+      expect(pkg.scripts.test).toBe('vitest run');
+    });
+  });
+
+  describe('generateContractAwareReadme', () => {
+    it('should include contract name', () => {
+      const result = generateContractAwareReadme(mockConfig, mockContract);
+
+      expect(result).toContain('# my-counter-app');
+      expect(result).toContain('Counter');
+    });
+
+    it('should list circuits in documentation', () => {
+      const result = generateContractAwareReadme(mockConfig, mockContract);
+
+      expect(result).toContain('`increment`');
+      expect(result).toContain('`decrement`');
+    });
+
+    it('should list witnesses separately', () => {
+      const result = generateContractAwareReadme(mockConfig, mockContract);
+
+      expect(result).toContain('Witnesses (Pure Functions)');
+      expect(result).toContain('`getValue`');
+    });
+
+    it('should include project structure', () => {
+      const result = generateContractAwareReadme(mockConfig, mockContract);
+
+      expect(result).toContain('artifacts/');
+      expect(result).toContain('circuits/');
+      expect(result).toContain('contract.ts');
+    });
+  });
+
+  describe('generateContractAwareFiles', () => {
+    it('should generate contract wrapper with re-export', () => {
+      const files = generateContractAwareFiles(mockConfig, mockContract);
+      const contractFile = files.find((f) => f.path === 'src/contract.ts');
+
+      expect(contractFile).toBeDefined();
+      expect(contractFile?.content).toContain('export * as Counter');
+      expect(contractFile?.content).toContain('../artifacts/Counter/contract/index.cjs');
+    });
+
+    it('should generate connect function with PascalCase name', () => {
+      const files = generateContractAwareFiles(mockConfig, mockContract);
+      const contractFile = files.find((f) => f.path === 'src/contract.ts');
+
+      expect(contractFile?.content).toContain('connectCounter');
+    });
+
+    it('should generate circuits index with re-exports', () => {
+      const files = generateContractAwareFiles(mockConfig, mockContract);
+      const circuitsIndex = files.find((f) => f.path === 'src/circuits/index.ts');
+
+      expect(circuitsIndex).toBeDefined();
+      expect(circuitsIndex?.content).toContain("export * from './increment.js'");
+      expect(circuitsIndex?.content).toContain("export * from './decrement.js'");
+    });
+
+    it('should generate circuit handlers with typed interfaces', () => {
+      const files = generateContractAwareFiles(mockConfig, mockContract);
+      const incrementHandler = files.find((f) => f.path === 'src/circuits/increment.ts');
+
+      expect(incrementHandler).toBeDefined();
+      expect(incrementHandler?.content).toContain('IncrementParams');
+      expect(incrementHandler?.content).toContain('IncrementResult');
+      expect(incrementHandler?.content).toContain('export async function increment');
+      expect(incrementHandler?.content).toContain('DeployedContract');
+    });
+
+    it('should not generate handlers for pure functions (witnesses)', () => {
+      const files = generateContractAwareFiles(mockConfig, mockContract);
+      const paths = files.map((f) => f.path);
+
+      expect(paths).not.toContain('src/circuits/getValue.ts');
+    });
+  });
+
+  describe('contract with no impure circuits', () => {
+    const viewOnlyContract: LoadedContractForTemplate = {
+      name: 'ViewOnly',
+      circuits: [
+        { name: 'getData', isImpure: false },
+        { name: 'getBalance', isImpure: false },
+      ],
+      modulePath: '/path/to/contract/index.cjs',
+    };
+
+    it('should generate empty circuits index', () => {
+      const files = generateContractAwareFiles(mockConfig, viewOnlyContract);
+      const circuitsIndex = files.find((f) => f.path === 'src/circuits/index.ts');
+
+      expect(circuitsIndex).toBeDefined();
+      expect(circuitsIndex?.content).toContain('No impure circuits found');
+      expect(circuitsIndex?.content).toContain('export {}');
+    });
+
+    it('should not generate any circuit handler files', () => {
+      const files = generateContractAwareFiles(mockConfig, viewOnlyContract);
+      const handlerFiles = files.filter((f) =>
+        f.path.startsWith('src/circuits/') && f.path !== 'src/circuits/index.ts'
+      );
+
+      expect(handlerFiles).toHaveLength(0);
+    });
   });
 });

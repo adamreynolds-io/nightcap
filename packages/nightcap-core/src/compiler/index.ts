@@ -32,3 +32,10 @@ export {
   formatErrorWithSource,
 } from './error-formatter.js';
 export type { CompilationError, ErrorFormat } from './error-formatter.js';
+export {
+  loadCompiledContract,
+  isCompiledContract,
+  toPascalCase,
+  toCamelCase,
+} from './contract-loader.js';
+export type { LoadedContract } from './contract-loader.js';

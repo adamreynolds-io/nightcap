@@ -815,3 +815,440 @@ export function getTemplateFiles(config: ProjectConfig): GeneratedFile[] {
 
   return files;
 }
+
+// =============================================================================
+// Contract-Aware Template Generation (for --from-contract)
+// =============================================================================
+
+/**
+ * Circuit information for template generation
+ */
+export interface CircuitInfoForTemplate {
+  name: string;
+  isImpure: boolean;
+}
+
+/**
+ * Loaded contract information for template generation
+ */
+export interface LoadedContractForTemplate {
+  name: string;
+  circuits: CircuitInfoForTemplate[];
+  modulePath: string;
+}
+
+/**
+ * Generate files for a project scaffolded from an existing compiled contract
+ */
+export function getContractAwareTemplateFiles(
+  config: ProjectConfig,
+  contract: LoadedContractForTemplate
+): GeneratedFile[] {
+  const files: GeneratedFile[] = [
+    { path: 'nightcap.config.ts', content: generateConfig(config) },
+    { path: 'package.json', content: generateContractAwarePackageJson(config, contract) },
+    { path: 'tsconfig.json', content: generateTsConfig() },
+    { path: '.gitignore', content: generateGitignore() },
+    { path: 'README.md', content: generateContractAwareReadme(config, contract) },
+  ];
+
+  // Generate contract wrapper and circuit handlers
+  files.push(...generateContractAwareFiles(config, contract));
+
+  // Generate test file
+  files.push({
+    path: `test/${contract.name}.test.ts`,
+    content: generateContractAwareTest(config, contract),
+  });
+
+  // Create directories (artifacts will be copied separately)
+  files.push({ path: 'deploy/.gitkeep', content: '' });
+
+  return files;
+}
+
+/**
+ * Generate package.json for contract-aware project
+ */
+export function generateContractAwarePackageJson(
+  config: ProjectConfig,
+  contract: LoadedContractForTemplate
+): string {
+  const scripts: Record<string, string> = {
+    build: 'tsc',
+    test: 'vitest run',
+    'test:watch': 'vitest',
+  };
+
+  const dependencies: Record<string, string> = {
+    '@midnight-ntwrk/midnight-js-contracts': '^0.1.0',
+    '@midnight-ntwrk/midnight-js-types': '^0.1.0',
+  };
+
+  const devDependencies: Record<string, string> = {
+    '@nightcap/core': '^0.0.1',
+    typescript: '^5.7.0',
+    vitest: '^2.0.0',
+  };
+
+  const pkg: Record<string, unknown> = {
+    name: config.name,
+    version: '0.0.1',
+    description: config.description ?? `A Midnight dApp using the ${contract.name} contract`,
+    type: 'module',
+    keywords: ['midnight', 'blockchain', 'compact', contract.name.toLowerCase()],
+    license: 'MIT',
+    scripts,
+    dependencies,
+    devDependencies,
+  };
+
+  return JSON.stringify(pkg, null, 2) + '\n';
+}
+
+/**
+ * Generate README for contract-aware project
+ */
+export function generateContractAwareReadme(
+  config: ProjectConfig,
+  contract: LoadedContractForTemplate
+): string {
+  const impureCircuits = contract.circuits.filter((c) => c.isImpure);
+  const witnesses = contract.circuits.filter((c) => !c.isImpure);
+
+  let circuitDocs = '';
+  if (impureCircuits.length > 0) {
+    circuitDocs += `\n### Circuits (State-Modifying)\n\n`;
+    for (const circuit of impureCircuits) {
+      circuitDocs += `- \`${circuit.name}\` - TODO: Add description\n`;
+    }
+  }
+  if (witnesses.length > 0) {
+    circuitDocs += `\n### Witnesses (Pure Functions)\n\n`;
+    for (const witness of witnesses) {
+      circuitDocs += `- \`${witness.name}\` - TODO: Add description\n`;
+    }
+  }
+
+  return `# ${config.name}
+
+${config.description ?? `A Midnight dApp built on the ${contract.name} contract.`}
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js >= 20
+- Docker (for local development)
+- Nightcap CLI
+
+### Installation
+
+\`\`\`bash
+npm install
+\`\`\`
+
+### Development
+
+Start the local Midnight network:
+
+\`\`\`bash
+nightcap node
+\`\`\`
+
+### Build
+
+\`\`\`bash
+npm run build
+\`\`\`
+
+### Run Tests
+
+\`\`\`bash
+npm test
+\`\`\`
+
+## Contract: ${contract.name}
+${circuitDocs}
+## Project Structure
+
+\`\`\`
+${config.name}/
+├── artifacts/
+│   └── ${contract.name}/        # Compiled contract artifacts
+├── src/
+│   ├── index.ts                 # Main entry point
+│   ├── contract.ts              # Contract wrapper with typed interface
+│   └── circuits/
+│       ├── index.ts             # Re-exports all circuit handlers
+${impureCircuits.map((c) => `│       └── ${c.name}.ts           # Handler for ${c.name} circuit`).join('\n')}
+├── test/
+│   └── ${contract.name}.test.ts # Contract tests
+├── nightcap.config.ts           # Nightcap configuration
+└── package.json
+\`\`\`
+
+## Resources
+
+- [Midnight Documentation](https://docs.midnight.network)
+- [Nightcap CLI Guide](https://docs.midnight.network/nightcap)
+- [Compact Language Reference](https://docs.midnight.network/compact)
+
+## License
+
+MIT
+`;
+}
+
+/**
+ * Generate contract-aware source files
+ */
+export function generateContractAwareFiles(
+  config: ProjectConfig,
+  contract: LoadedContractForTemplate
+): GeneratedFile[] {
+  const files: GeneratedFile[] = [];
+  const impureCircuits = contract.circuits.filter((c) => c.isImpure);
+
+  // src/index.ts - Main entry point
+  files.push({
+    path: 'src/index.ts',
+    content: `/**
+ * ${config.name} - Midnight dApp
+ * @generated from ${contract.name} contract
+ */
+
+export * from './contract.js';
+export * from './circuits/index.js';
+`,
+  });
+
+  // src/contract.ts - Typed contract wrapper
+  files.push({
+    path: 'src/contract.ts',
+    content: generateContractWrapper(config, contract),
+  });
+
+  // src/circuits/index.ts - Re-export all circuit handlers
+  files.push({
+    path: 'src/circuits/index.ts',
+    content: generateCircuitsIndex(contract),
+  });
+
+  // src/circuits/{circuitName}.ts - Individual circuit handlers
+  for (const circuit of impureCircuits) {
+    files.push({
+      path: `src/circuits/${circuit.name}.ts`,
+      content: generateCircuitHandler(config, contract, circuit),
+    });
+  }
+
+  return files;
+}
+
+/**
+ * Generate contract wrapper (src/contract.ts)
+ */
+function generateContractWrapper(
+  _config: ProjectConfig,
+  contract: LoadedContractForTemplate
+): string {
+  const pascalName = toPascalCase(contract.name);
+
+  return `/**
+ * Contract wrapper for ${contract.name}
+ * @generated from compiled contract
+ */
+
+// Re-export the compiled contract
+export * as ${pascalName} from '../artifacts/${contract.name}/contract/index.cjs';
+
+/**
+ * Contract configuration for connecting to ${contract.name}
+ */
+export interface ContractConfig {
+  nodeUrl: string;
+  indexerUrl: string;
+  proofServerUrl: string;
+}
+
+/**
+ * Default configuration for local development
+ */
+export const DEFAULT_CONFIG: ContractConfig = {
+  nodeUrl: 'http://localhost:9944',
+  indexerUrl: 'http://localhost:8080/api/v1/graphql',
+  proofServerUrl: 'http://localhost:6300',
+};
+
+/**
+ * Deployed contract instance type
+ * TODO: Replace with actual midnight-js types
+ */
+export interface DeployedContract {
+  address: string;
+  config: ContractConfig;
+}
+
+/**
+ * Connect to a deployed ${contract.name} contract
+ */
+export async function connect${pascalName}(
+  address: string,
+  config: ContractConfig = DEFAULT_CONFIG
+): Promise<DeployedContract> {
+  // TODO: Implement using midnight-js
+  console.log('Connecting to ${contract.name} at', address);
+  return {
+    address,
+    config,
+  };
+}
+`;
+}
+
+/**
+ * Generate circuits index file (src/circuits/index.ts)
+ */
+function generateCircuitsIndex(contract: LoadedContractForTemplate): string {
+  const impureCircuits = contract.circuits.filter((c) => c.isImpure);
+
+  if (impureCircuits.length === 0) {
+    return `/**
+ * Circuit handlers for ${contract.name}
+ * @generated from compiled contract
+ */
+
+// No impure circuits found in this contract
+export {};
+`;
+  }
+
+  const exports = impureCircuits.map((c) => `export * from './${c.name}.js';`).join('\n');
+
+  return `/**
+ * Circuit handlers for ${contract.name}
+ * @generated from compiled contract
+ */
+
+${exports}
+`;
+}
+
+/**
+ * Generate individual circuit handler file
+ */
+function generateCircuitHandler(
+  _config: ProjectConfig,
+  contract: LoadedContractForTemplate,
+  circuit: CircuitInfoForTemplate
+): string {
+  const pascalCircuitName = toPascalCase(circuit.name);
+
+  return `/**
+ * Handler for ${circuit.name} circuit
+ * @generated from ${contract.name} compiled contract
+ */
+
+import type { DeployedContract } from '../contract.js';
+
+/**
+ * Parameters for calling ${circuit.name}
+ * TODO: Define based on circuit signature
+ */
+export interface ${pascalCircuitName}Params {
+  // Add circuit parameters here
+}
+
+/**
+ * Result from ${circuit.name} circuit call
+ * TODO: Define based on circuit return type
+ */
+export interface ${pascalCircuitName}Result {
+  // Add result fields here
+  success: boolean;
+}
+
+/**
+ * Call the ${circuit.name} circuit on a deployed contract
+ *
+ * @param contract - The deployed contract instance
+ * @param params - Parameters for the circuit call
+ * @returns Result of the circuit execution
+ */
+export async function ${circuit.name}(
+  contract: DeployedContract,
+  params: ${pascalCircuitName}Params
+): Promise<${pascalCircuitName}Result> {
+  // TODO: Implement circuit call using midnight-js
+  // Example:
+  // const result = await contract.callTx.${circuit.name}(...args);
+
+  console.log('Calling ${circuit.name} on', contract.address, 'with params:', params);
+
+  return {
+    success: true,
+  };
+}
+`;
+}
+
+/**
+ * Generate test file for contract-aware project
+ */
+function generateContractAwareTest(
+  _config: ProjectConfig,
+  contract: LoadedContractForTemplate
+): string {
+  const pascalName = toPascalCase(contract.name);
+  const impureCircuits = contract.circuits.filter((c) => c.isImpure);
+
+  let testCases = '';
+  for (const circuit of impureCircuits) {
+    testCases += `
+  it('should call ${circuit.name} circuit', async () => {
+    // TODO: Implement test
+    // const result = await ${circuit.name}(contract, {});
+    // expect(result.success).toBe(true);
+    expect(true).toBe(true); // Placeholder
+  });
+`;
+  }
+
+  if (testCases === '') {
+    testCases = `
+  it('should deploy the contract', async () => {
+    // TODO: Implement deployment test
+    expect(true).toBe(true); // Placeholder
+  });
+`;
+  }
+
+  return `/**
+ * ${contract.name} contract tests
+ * @generated from compiled contract
+ */
+
+import { describe, it, expect, beforeAll } from 'vitest';
+// import { connect${pascalName} } from '../src/contract.js';
+
+describe('${contract.name}', () => {
+  // let contract: Awaited<ReturnType<typeof connect${pascalName}>>;
+
+  beforeAll(async () => {
+    // TODO: Deploy contract or connect to existing
+    // contract = await connect${pascalName}('contract-address');
+  });
+${testCases}
+});
+`;
+}
+
+/**
+ * Convert a string to PascalCase
+ */
+function toPascalCase(str: string): string {
+  return str
+    .replace(/[-_](\w)/g, (_, c: string) => c.toUpperCase())
+    .replace(/^\w/, (c) => c.toUpperCase());
+}

@@ -4,7 +4,7 @@
  */
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { logger } from '../utils/logger.js';
 

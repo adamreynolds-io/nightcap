@@ -24,6 +24,7 @@ vi.mock('@inquirer/prompts', () => ({
   input: vi.fn().mockResolvedValue('test-project'),
   select: vi.fn().mockResolvedValue('basic'),
   confirm: vi.fn().mockResolvedValue(true),
+  checkbox: vi.fn().mockResolvedValue([]),
 }));
 
 // Mock fs operations
@@ -35,6 +36,7 @@ vi.mock('node:fs', () => ({
 vi.mock('node:fs/promises', () => ({
   writeFile: vi.fn().mockResolvedValue(undefined),
   mkdir: vi.fn().mockResolvedValue(undefined),
+  cp: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock child_process
@@ -48,6 +50,21 @@ vi.mock('node:child_process', () => ({
     stdout: { on: vi.fn() },
     stderr: { on: vi.fn() },
   })),
+}));
+
+// Mock contract-loader
+vi.mock('../../compiler/contract-loader.js', () => ({
+  loadCompiledContract: vi.fn().mockResolvedValue({
+    name: 'TestContract',
+    circuits: [
+      { name: 'increment', isImpure: true, parameters: [] },
+      { name: 'decrement', isImpure: true, parameters: [] },
+      { name: 'getValue', isImpure: false, parameters: [] },
+    ],
+    modulePath: '/mock/path/contract/index.cjs',
+  }),
+  isCompiledContract: vi.fn().mockReturnValue(true),
+  toCamelCase: vi.fn((str: string) => str.charAt(0).toLowerCase() + str.slice(1)),
 }));
 
 describe('initTask', () => {
@@ -523,5 +540,298 @@ describe('init helper functions', () => {
       // Should prompt for confirmation
       expect(confirm).toHaveBeenCalled();
     });
+  });
+});
+
+describe('init --from-contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should have from-contract param defined', () => {
+    expect(initTask.params?.['from-contract']).toBeDefined();
+    expect(initTask.params?.['from-contract']?.type).toBe('string');
+  });
+
+  it('should create project from compiled contract', async () => {
+    const { existsSync, readdirSync } = await import('node:fs');
+    const { writeFile, mkdir, cp } = await import('node:fs/promises');
+    const { logger } = await import('../../utils/logger.js');
+    const { loadCompiledContract, isCompiledContract } = await import(
+      '../../compiler/contract-loader.js'
+    );
+
+    // existsSync returns true only for contract path check, false for directory/file checks
+    vi.mocked(existsSync).mockImplementation((path: unknown) => {
+      const p = String(path);
+      // Return true for contract path validation
+      if (p.includes('TestContract')) return true;
+      // Return false for all other paths (file exists check)
+      return false;
+    });
+    vi.mocked(readdirSync).mockReturnValue([]);
+    vi.mocked(isCompiledContract).mockReturnValue(true);
+    vi.mocked(loadCompiledContract).mockResolvedValue({
+      name: 'TestContract',
+      circuits: [
+        { name: 'increment', isImpure: true, parameters: [] },
+        { name: 'decrement', isImpure: true, parameters: [] },
+        { name: 'getValue', isImpure: false, parameters: [] },
+      ],
+      modulePath: '/mock/path/contract/index.cjs',
+    });
+
+    const context = {
+      config: {},
+      network: { name: 'localnet' },
+      networkName: 'localnet',
+      params: {
+        'from-contract': '/path/to/TestContract',
+        'skip-install': true,
+      },
+      verbose: false,
+    };
+
+    await initTask.action(context);
+
+    // Should have loaded the contract
+    expect(loadCompiledContract).toHaveBeenCalledWith(
+      expect.stringContaining('TestContract')
+    );
+
+    // Should have created files
+    expect(mkdir).toHaveBeenCalled();
+    expect(writeFile).toHaveBeenCalled();
+
+    // Should have copied contract artifacts
+    expect(cp).toHaveBeenCalled();
+
+    // Should show success message
+    expect(logger.success).toHaveBeenCalledWith('Project created successfully!');
+  });
+
+  it('should use provided name when --name is specified', async () => {
+    const { existsSync, readdirSync } = await import('node:fs');
+    const { writeFile } = await import('node:fs/promises');
+    const { isCompiledContract, loadCompiledContract } = await import('../../compiler/contract-loader.js');
+
+    vi.mocked(existsSync).mockImplementation((path: unknown) => {
+      const p = String(path);
+      if (p.includes('TestContract')) return true;
+      return false;
+    });
+    vi.mocked(readdirSync).mockReturnValue([]);
+    vi.mocked(isCompiledContract).mockReturnValue(true);
+    vi.mocked(loadCompiledContract).mockResolvedValue({
+      name: 'TestContract',
+      circuits: [
+        { name: 'increment', isImpure: true, parameters: [] },
+      ],
+      modulePath: '/mock/path/contract/index.cjs',
+    });
+
+    const context = {
+      config: {},
+      network: { name: 'localnet' },
+      networkName: 'localnet',
+      params: {
+        'from-contract': '/path/to/TestContract',
+        name: 'my-custom-name',
+        'skip-install': true,
+      },
+      verbose: false,
+    };
+
+    await initTask.action(context);
+
+    // Should have used the custom name in package.json
+    expect(writeFile).toHaveBeenCalledWith(
+      expect.stringContaining('package.json'),
+      expect.stringContaining('my-custom-name'),
+      'utf8'
+    );
+  });
+
+  it('should throw error if contract path does not exist', async () => {
+    const { existsSync, readdirSync } = await import('node:fs');
+
+    vi.mocked(existsSync).mockReturnValue(false);
+    vi.mocked(readdirSync).mockReturnValue([]);
+
+    const context = {
+      config: {},
+      network: { name: 'localnet' },
+      networkName: 'localnet',
+      params: {
+        'from-contract': '/nonexistent/path',
+        'skip-install': true,
+      },
+      verbose: false,
+    };
+
+    await expect(initTask.action(context)).rejects.toThrow(
+      'Contract path does not exist'
+    );
+  });
+
+  it('should throw error if path is not a valid compiled contract', async () => {
+    const { existsSync, readdirSync } = await import('node:fs');
+    const { isCompiledContract } = await import('../../compiler/contract-loader.js');
+
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readdirSync).mockReturnValue([]);
+    vi.mocked(isCompiledContract).mockReturnValue(false);
+
+    const context = {
+      config: {},
+      network: { name: 'localnet' },
+      networkName: 'localnet',
+      params: {
+        'from-contract': '/invalid/contract',
+        'skip-install': true,
+      },
+      verbose: false,
+    };
+
+    await expect(initTask.action(context)).rejects.toThrow(
+      'No valid compiled contract found'
+    );
+  });
+
+  it('should generate circuit handler files', async () => {
+    const { existsSync, readdirSync } = await import('node:fs');
+    const { writeFile } = await import('node:fs/promises');
+    const { isCompiledContract, loadCompiledContract } = await import('../../compiler/contract-loader.js');
+
+    vi.mocked(existsSync).mockImplementation((path: unknown) => {
+      const p = String(path);
+      if (p.includes('TestContract')) return true;
+      return false;
+    });
+    vi.mocked(readdirSync).mockReturnValue([]);
+    vi.mocked(isCompiledContract).mockReturnValue(true);
+    vi.mocked(loadCompiledContract).mockResolvedValue({
+      name: 'TestContract',
+      circuits: [
+        { name: 'increment', isImpure: true, parameters: [] },
+        { name: 'decrement', isImpure: true, parameters: [] },
+        { name: 'getValue', isImpure: false, parameters: [] },
+      ],
+      modulePath: '/mock/path/contract/index.cjs',
+    });
+
+    const context = {
+      config: {},
+      network: { name: 'localnet' },
+      networkName: 'localnet',
+      params: {
+        'from-contract': '/path/to/TestContract',
+        'skip-install': true,
+      },
+      verbose: false,
+    };
+
+    await initTask.action(context);
+
+    // Should have created circuit handler files for impure circuits
+    expect(writeFile).toHaveBeenCalledWith(
+      expect.stringContaining('src/circuits/increment.ts'),
+      expect.any(String),
+      'utf8'
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      expect.stringContaining('src/circuits/decrement.ts'),
+      expect.any(String),
+      'utf8'
+    );
+  });
+
+  it('should generate contract wrapper file', async () => {
+    const { existsSync, readdirSync } = await import('node:fs');
+    const { writeFile } = await import('node:fs/promises');
+    const { isCompiledContract, loadCompiledContract } = await import('../../compiler/contract-loader.js');
+
+    vi.mocked(existsSync).mockImplementation((path: unknown) => {
+      const p = String(path);
+      if (p.includes('TestContract')) return true;
+      return false;
+    });
+    vi.mocked(readdirSync).mockReturnValue([]);
+    vi.mocked(isCompiledContract).mockReturnValue(true);
+    vi.mocked(loadCompiledContract).mockResolvedValue({
+      name: 'TestContract',
+      circuits: [
+        { name: 'increment', isImpure: true, parameters: [] },
+      ],
+      modulePath: '/mock/path/contract/index.cjs',
+    });
+
+    const context = {
+      config: {},
+      network: { name: 'localnet' },
+      networkName: 'localnet',
+      params: {
+        'from-contract': '/path/to/TestContract',
+        'skip-install': true,
+      },
+      verbose: false,
+    };
+
+    await initTask.action(context);
+
+    // Should have created contract wrapper
+    expect(writeFile).toHaveBeenCalledWith(
+      expect.stringContaining('src/contract.ts'),
+      expect.any(String),
+      'utf8'
+    );
+  });
+
+  it('should show circuit information in logs', async () => {
+    const { existsSync, readdirSync } = await import('node:fs');
+    const { logger } = await import('../../utils/logger.js');
+    const { isCompiledContract, loadCompiledContract } = await import('../../compiler/contract-loader.js');
+
+    vi.mocked(existsSync).mockImplementation((path: unknown) => {
+      const p = String(path);
+      if (p.includes('TestContract')) return true;
+      return false;
+    });
+    vi.mocked(readdirSync).mockReturnValue([]);
+    vi.mocked(isCompiledContract).mockReturnValue(true);
+    vi.mocked(loadCompiledContract).mockResolvedValue({
+      name: 'TestContract',
+      circuits: [
+        { name: 'increment', isImpure: true, parameters: [] },
+        { name: 'decrement', isImpure: true, parameters: [] },
+        { name: 'getValue', isImpure: false, parameters: [] },
+      ],
+      modulePath: '/mock/path/contract/index.cjs',
+    });
+
+    const context = {
+      config: {},
+      network: { name: 'localnet' },
+      networkName: 'localnet',
+      params: {
+        'from-contract': '/path/to/TestContract',
+        'skip-install': true,
+      },
+      verbose: false,
+    };
+
+    await initTask.action(context);
+
+    // Should log the found contract
+    expect(logger.success).toHaveBeenCalledWith('Found contract: TestContract');
+
+    // Should log the circuits
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('increment')
+    );
   });
 });
