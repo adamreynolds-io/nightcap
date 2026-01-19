@@ -1,19 +1,19 @@
 ## 1. Compile Task
 - [x] 1.1 Implement `nightcap compile` task
 - [x] 1.2 Add contract source discovery from configured paths
-- [ ] 1.3 Implement dependency resolution between contracts
+- [x] 1.3 Implement dependency resolution between contracts
 - [x] 1.4 Add `--force` flag to bypass cache
 
 ## 2. Compiler Integration
 - [x] 2.1 Integrate `compactc` binary (subprocess execution)
 - [x] 2.2 Detect installed compactc and version
 - [x] 2.3 Implement compiler download from GitHub releases (stable)
-- [ ] 2.4 Implement compiler download from prerelease directory
+- [x] 2.4 Implement compiler download from prerelease directory
 - [x] 2.5 Support platform detection (macOS arm64/x86_64, Linux x86_64)
 - [x] 2.6 Store managed compiler versions in `~/.nightcap/compilers/`
 - [x] 2.7 Support pinning compiler version via config
 - [x] 2.8 Add `nightcap compiler:install <version>` command
-- [ ] 2.9 Add `--prerelease` flag for prerelease versions
+- [x] 2.9 Add `--prerelease` flag for prerelease versions
 - [x] 2.10 Add `nightcap compiler:list` to show installed versions
 
 ## 3. Artifact Generation
@@ -36,7 +36,7 @@
 
 ## 6. Error Handling
 - [x] 6.1 Format compilation errors with source context
-- [ ] 6.2 Highlight error location in source file
+- [x] 6.2 Highlight error location in source file
 - [x] 6.3 Provide actionable error messages
 - [ ] 6.4 Support IDE integration for error reporting
 

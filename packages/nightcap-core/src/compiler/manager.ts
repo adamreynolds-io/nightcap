@@ -282,6 +282,66 @@ export class CompilerManager {
   }
 
   /**
+   * List available prerelease versions from GitHub
+   */
+  async listPrereleaseVersions(): Promise<string[]> {
+    const response = await fetch(
+      'https://api.github.com/repos/midnightntwrk/compact/contents/prerelease'
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch prerelease versions: ${response.status}`);
+    }
+    const data = await response.json() as Array<{ name: string; type: string }>;
+    return data
+      .filter(item => item.type === 'dir' && item.name.startsWith('compactc-'))
+      .map(item => item.name.replace('compactc-', ''));
+  }
+
+  /**
+   * Get the latest prerelease version for a given base version
+   */
+  async getLatestPrerelease(baseVersion: string): Promise<{ version: string; url: string } | null> {
+    const plat = getOldReleasePlatform();
+    if (!plat) {
+      throw new Error(`Unsupported platform: ${platform()} ${arch()}`);
+    }
+
+    const response = await fetch(
+      `https://api.github.com/repos/midnightntwrk/compact/contents/prerelease/compactc-${baseVersion}`
+    );
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to fetch prerelease files: ${response.status}`);
+    }
+
+    const data = await response.json() as Array<{ name: string; download_url: string }>;
+
+    // Find the latest rc for this platform
+    // Files are named: compactc_v0.27.0-rc.1_aarch64-darwin.zip
+    const platformFiles = data
+      .filter(f => f.name.endsWith(`_${plat}.zip`))
+      .map(f => {
+        const match = /compactc_v([\d.]+-rc\.\d+)_/.exec(f.name);
+        return match ? { version: match[1] ?? '', url: f.download_url, name: f.name } : null;
+      })
+      .filter((f): f is { version: string; url: string; name: string } => f !== null)
+      .sort((a, b) => {
+        // Sort by rc number descending to get latest
+        const rcA = parseInt(/rc\.(\d+)/.exec(a.version)?.[1] ?? '0');
+        const rcB = parseInt(/rc\.(\d+)/.exec(b.version)?.[1] ?? '0');
+        return rcB - rcA;
+      });
+
+    if (platformFiles.length === 0) {
+      return null;
+    }
+
+    return { version: platformFiles[0]!.version, url: platformFiles[0]!.url };
+  }
+
+  /**
    * Download and install a compiler version
    */
   async install(version: string, prerelease = false): Promise<string> {
@@ -312,8 +372,50 @@ export class CompilerManager {
     await mkdir(installDir, { recursive: true });
 
     if (prerelease) {
-      logger.warn('Prerelease channel not yet supported, using latest stable');
-      actualVersion = await this.getLatestVersion();
+      // Handle prerelease download
+      const prereleaseInfo = await this.getLatestPrerelease(actualVersion);
+      if (!prereleaseInfo) {
+        const available = await this.listPrereleaseVersions();
+        if (available.length > 0) {
+          logger.error(`No prerelease found for version ${actualVersion}`);
+          logger.info(`Available prerelease versions: ${available.join(', ')}`);
+        } else {
+          logger.error('No prerelease versions available');
+        }
+        throw new Error(`Prerelease not found for ${actualVersion}`);
+      }
+
+      logger.info(`Downloading prerelease ${prereleaseInfo.version}...`);
+      logger.debug(`URL: ${prereleaseInfo.url}`);
+
+      const response = await fetch(prereleaseInfo.url);
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      const archivePath = join(installDir, 'compactc.zip');
+      const fileStream = createWriteStream(archivePath);
+      await pipeline(response.body as unknown as NodeJS.ReadableStream, fileStream);
+
+      logger.info('Extracting...');
+      await extractZip(archivePath, installDir);
+
+      // Prerelease extracts to compactc binary directly
+      if (!existsSync(compilerPath)) {
+        throw new Error(`Binary not found after extraction: ${compilerPath}`);
+      }
+
+      await chmod(compilerPath, 0o755);
+      await rm(archivePath, { force: true });
+
+      // Verify it works
+      const installedVersion = this.getVersion(compilerPath);
+      if (!installedVersion) {
+        throw new Error('Downloaded compiler failed version check');
+      }
+
+      logger.success(`Installed compact ${installedVersion} (prerelease)`);
+      return compilerPath;
     }
 
     // Try new format first (compact-v0.x.0 with tar.xz)

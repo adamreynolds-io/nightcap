@@ -11,6 +11,10 @@ import { confirm } from '@inquirer/prompts';
 import type { TaskDefinition, TaskContext } from '../types.js';
 import { logger } from '../../utils/logger.js';
 import { CompilerManager } from '../../compiler/manager.js';
+import {
+  resolveCompilationOrder,
+  checkVersionCompatibility,
+} from '../../compiler/dependency-resolver.js';
 
 /**
  * Cache entry for a compiled contract
@@ -146,14 +150,34 @@ export const compileTask: TaskDefinition = {
     }
 
     // Discover contracts
-    const contracts = discoverContracts(sourcesDir);
+    const contractPaths = discoverContracts(sourcesDir);
 
-    if (contracts.length === 0) {
+    if (contractPaths.length === 0) {
       logger.info('No Compact contracts found to compile');
       return;
     }
 
-    logger.info(`Found ${contracts.length} contract(s) to compile`);
+    logger.info(`Found ${contractPaths.length} contract(s) to compile`);
+
+    // Resolve dependencies and compilation order
+    logger.debug('Resolving contract dependencies...');
+    const compilationOrder = await resolveCompilationOrder(contractPaths, cwd);
+
+    // Report dependency resolution warnings
+    for (const warning of compilationOrder.warnings) {
+      logger.warn(warning);
+    }
+
+    // Report dependency resolution errors
+    if (compilationOrder.errors.length > 0) {
+      for (const error of compilationOrder.errors) {
+        logger.error(error);
+      }
+      throw new Error('Dependency resolution failed');
+    }
+
+    // Use resolved contracts in proper compilation order
+    const contracts = compilationOrder.contracts;
 
     // Initialize compiler manager
     const compilerManager = new CompilerManager();
@@ -194,19 +218,27 @@ export const compileTask: TaskDefinition = {
       await mkdir(artifactsDir, { recursive: true });
     }
 
-    // Compile each contract
+    // Check version compatibility for all contracts
+    for (const contract of contracts) {
+      const versionCheck = checkVersionCompatibility(contract, compilerVersion);
+      if (!versionCheck.compatible && versionCheck.message) {
+        logger.warn(versionCheck.message);
+      }
+    }
+
+    // Compile each contract in dependency order
     let compiled = 0;
     let skipped = 0;
     let failed = 0;
 
-    for (const contractPath of contracts) {
-      const relativePath = relative(cwd, contractPath);
-      const contractName = basename(contractPath, '.compact');
+    for (const contract of contracts) {
+      const relativePath = relative(cwd, contract.path);
+      const contractName = contract.name;
 
       // Check cache
       if (!force && manifest.entries[relativePath]) {
         const entry = manifest.entries[relativePath];
-        const currentHash = await hashFile(contractPath);
+        const currentHash = await hashFile(contract.path);
 
         if (entry?.sourceHash === currentHash && entry?.compilerVersion === compilerVersion) {
           logger.debug(`Skipping ${contractName} (cached)`);
@@ -215,16 +247,21 @@ export const compileTask: TaskDefinition = {
         }
       }
 
+      // Show dependencies if verbose
+      if (context.verbose && contract.localImports.length > 0) {
+        logger.debug(`${contractName} depends on: ${contract.localImports.map(p => basename(p, '.compact')).join(', ')}`);
+      }
+
       // Compile
       logger.info(`Compiling ${contractName}...`);
-      const result = await compilerManager.compile(contractPath, artifactsDir, compilerPath);
+      const result = await compilerManager.compile(contract.path, artifactsDir, compilerPath);
 
       if (result.success) {
         compiled++;
 
         // Update cache
         manifest.entries[relativePath] = {
-          sourceHash: await hashFile(contractPath),
+          sourceHash: await hashFile(contract.path),
           compilerVersion,
           timestamp: Date.now(),
         };
@@ -239,7 +276,8 @@ export const compileTask: TaskDefinition = {
         logger.error(`Failed to compile ${contractName}:`);
         if (result.errors) {
           for (const error of result.errors) {
-            logger.log(formatCompilationError(error));
+            const formatted = await formatCompilationErrorWithSource(error, contract.path);
+            logger.log(formatted);
           }
         }
       }
@@ -266,16 +304,53 @@ export const compileTask: TaskDefinition = {
 };
 
 /**
- * Format a compilation error for display
+ * Format a compilation error for display with source context
  */
-function formatCompilationError(error: string): string {
+async function formatCompilationErrorWithSource(
+  error: string,
+  sourcePath?: string
+): Promise<string> {
   // Try to parse structured error output
   // Format: file:line:col: error: message
   const match = /^(.+):(\d+):(\d+):\s*(\w+):\s*(.+)$/m.exec(error);
 
   if (match) {
-    const [, file, line, col, type, message] = match;
-    return `  ${file}:${line}:${col}\n  ${type}: ${message}`;
+    const [, file, lineStr, colStr, type, message] = match;
+    const line = parseInt(lineStr ?? '0', 10);
+    const col = parseInt(colStr ?? '0', 10);
+
+    let output = `  ${file}:${line}:${col}\n  ${type}: ${message}`;
+
+    // Try to show source context
+    const targetFile = sourcePath ?? file;
+    if (targetFile && existsSync(targetFile) && line > 0) {
+      try {
+        const source = await readFile(targetFile, 'utf8');
+        const lines = source.split('\n');
+
+        // Get context: line before, error line, line after
+        const contextStart = Math.max(0, line - 2);
+        const contextEnd = Math.min(lines.length - 1, line);
+
+        output += '\n';
+        for (let i = contextStart; i <= contextEnd; i++) {
+          const lineNum = i + 1;
+          const lineContent = lines[i] ?? '';
+          const prefix = lineNum === line ? '>' : ' ';
+          output += `\n  ${prefix} ${lineNum.toString().padStart(4)} | ${lineContent}`;
+
+          // Add caret pointing to error column
+          if (lineNum === line && col > 0) {
+            const caretPadding = ' '.repeat(col + 8); // Account for prefix and line number
+            output += `\n  ${caretPadding}^`;
+          }
+        }
+      } catch {
+        // Ignore source reading errors
+      }
+    }
+
+    return output;
   }
 
   // Return as-is if not structured

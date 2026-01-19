@@ -41,6 +41,48 @@ The system SHALL automatically discover Compact contract sources based on config
 - **WHEN** configuration specifies `compact.exclude: ["**/test/**"]`
 - **THEN** skip matching files during discovery
 
+### Requirement: Contract Dependency Resolution
+The system SHALL resolve dependencies between contracts and compile them in correct order.
+
+#### Scenario: Parse imports
+- **WHEN** contract contains `import "path/to/other.compact";`
+- **THEN** identify the import as a local dependency
+
+#### Scenario: Parse standard library imports
+- **WHEN** contract contains `import CompactStandardLibrary;`
+- **THEN** recognize as standard library import (not a local file)
+
+#### Scenario: Compile in dependency order
+- **WHEN** contract A imports contract B
+- **THEN** compile contract B before contract A
+
+#### Scenario: Detect circular dependencies
+- **WHEN** contracts have circular imports
+- **THEN** report error with list of contracts in cycle
+
+#### Scenario: Missing dependency
+- **WHEN** contract imports non-existent file
+- **THEN** report error with missing file path
+
+### Requirement: Version Compatibility Checking
+The system SHALL verify compiler version matches contract requirements.
+
+#### Scenario: Parse pragma language_version
+- **WHEN** contract contains `pragma language_version 0.19;`
+- **THEN** record exact version requirement
+
+#### Scenario: Parse minimum version pragma
+- **WHEN** contract contains `pragma language_version >= 0.19;`
+- **THEN** record minimum version requirement
+
+#### Scenario: Version mismatch warning
+- **WHEN** compiler version doesn't satisfy contract's language_version pragma
+- **THEN** display warning with version mismatch details
+
+#### Scenario: Missing version pragma
+- **WHEN** contract has no pragma language_version
+- **THEN** display warning recommending version pragma
+
 ### Requirement: Artifact Generation
 The system SHALL generate compilation artifacts in a structured format.
 
