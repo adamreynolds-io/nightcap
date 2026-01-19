@@ -102,13 +102,16 @@ export async function parseContractArtifacts(
 }
 
 /**
- * Parse metadata for a single contract
+ * Parse metadata for a single contract using dynamic import
+ * This approach follows the pattern from midnight-contracts/test-runner
+ * which dynamically imports the compiled contract module and inspects
+ * the Contract class instance for circuit information.
  */
 async function parseContractMetadata(
   artifactDir: string,
   contractName: string
 ): Promise<ContractMetadata | null> {
-  // Try to find and parse the contract module
+  // Try to find the contract module
   // The compact compiler outputs JavaScript modules with the contract definition
   const possiblePaths = [
     join(artifactDir, 'contract', 'index.cjs'),
@@ -121,8 +124,7 @@ async function parseContractMetadata(
     if (!existsSync(modulePath)) continue;
 
     try {
-      const content = await readFile(modulePath, 'utf8');
-      const circuits = parseCircuitsFromSource(content);
+      const circuits = await parseCircuitsFromModule(modulePath);
 
       return {
         name: contractName,
@@ -130,7 +132,8 @@ async function parseContractMetadata(
         artifactPath: artifactDir,
         circuits,
       };
-    } catch {
+    } catch (error) {
+      logger.debug(`Failed to parse circuits from ${modulePath}: ${error}`);
       // Continue to next possible path
     }
   }
@@ -145,48 +148,62 @@ async function parseContractMetadata(
 }
 
 /**
- * Parse circuit information from compiled JavaScript source
- * This is a heuristic parser that looks for common patterns
+ * Contract module interface for compiled Compact contracts
  */
-function parseCircuitsFromSource(source: string): CircuitInfo[] {
+interface CompiledContractModule {
+  Contract: new (config: Record<string, unknown>) => {
+    impureCircuits?: Record<string, unknown>;
+    witnesses?: Record<string, unknown>;
+  };
+}
+
+/**
+ * Parse circuit information by dynamically importing the compiled contract module
+ * and inspecting the Contract class instance.
+ *
+ * This approach is based on the midnight-contracts/test-runner pattern:
+ * 1. Dynamic import of compiled index.cjs with cache-busting
+ * 2. Instantiate Contract class with empty config
+ * 3. Access impureCircuits and witnesses properties directly
+ */
+async function parseCircuitsFromModule(modulePath: string): Promise<CircuitInfo[]> {
   const circuits: CircuitInfo[] = [];
 
-  // Look for impureCircuits object definition
-  // Pattern: impureCircuits: { circuitName: function(...) { ... } }
-  const impureMatch = /impureCircuits\s*:\s*\{([^}]+)\}/s.exec(source);
-  if (impureMatch) {
-    const impureContent = impureMatch[1] ?? '';
-    // Extract circuit names
-    const circuitNames = impureContent.match(/(\w+)\s*:/g);
-    if (circuitNames) {
-      for (const match of circuitNames) {
-        const name = match.replace(':', '').trim();
-        if (name && !['__proto__', 'constructor'].includes(name)) {
-          circuits.push({
-            name,
-            isImpure: true,
-            parameters: [],
-          });
-        }
+  // Use file:// URL with cache-busting timestamp for dynamic import
+  const fileUrl = `file://${modulePath}?update=${Date.now()}`;
+  const contractModule = (await import(fileUrl)) as CompiledContractModule;
+
+  // Check if the module exports a Contract class
+  if (!contractModule.Contract || typeof contractModule.Contract !== 'function') {
+    logger.debug(`No Contract class found in ${modulePath}`);
+    return circuits;
+  }
+
+  // Instantiate the contract with empty config
+  const contractInstance = new contractModule.Contract({});
+
+  // Extract impure circuits (state-modifying functions)
+  if (contractInstance.impureCircuits && typeof contractInstance.impureCircuits === 'object') {
+    for (const name of Object.keys(contractInstance.impureCircuits)) {
+      if (name && !['__proto__', 'constructor'].includes(name)) {
+        circuits.push({
+          name,
+          isImpure: true,
+          parameters: [],
+        });
       }
     }
   }
 
-  // Look for witnesses object definition
-  const witnessMatch = /witnesses\s*:\s*\{([^}]+)\}/s.exec(source);
-  if (witnessMatch) {
-    const witnessContent = witnessMatch[1] ?? '';
-    const circuitNames = witnessContent.match(/(\w+)\s*:/g);
-    if (circuitNames) {
-      for (const match of circuitNames) {
-        const name = match.replace(':', '').trim();
-        if (name && !['__proto__', 'constructor'].includes(name)) {
-          circuits.push({
-            name,
-            isImpure: false,
-            parameters: [],
-          });
-        }
+  // Extract witnesses (pure functions)
+  if (contractInstance.witnesses && typeof contractInstance.witnesses === 'object') {
+    for (const name of Object.keys(contractInstance.witnesses)) {
+      if (name && !['__proto__', 'constructor'].includes(name)) {
+        circuits.push({
+          name,
+          isImpure: false,
+          parameters: [],
+        });
       }
     }
   }

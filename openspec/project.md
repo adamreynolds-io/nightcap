@@ -201,6 +201,7 @@ toolkit fetch --fetch-cache postgres://user:pass@host:port/db -s ws://node
 | [example-bboard](https://github.com/midnightntwrk/example-bboard) | Bulletin board dApp with Compact contract, CLI, and React web UI |
 | [midnight-js/testkit-js](https://github.com/midnightntwrk/midnight-js/tree/main/testkit-js) | Official Docker stack configuration for local development |
 | [midnight-node/scripts/tests](https://github.com/midnightntwrk/midnight-node/tree/main/scripts/tests) | Toolkit E2E test scripts showing command patterns |
+| [midnight-contracts/packages/test-runner](https://github.com/midnight-ntwrk/midnight-contracts/tree/main/packages/test-runner) | Contract test runner with circuit inspection patterns |
 
 These repositories demonstrate:
 - Valid Compact contract syntax (compatible with compactc 0.25.0+)
@@ -210,3 +211,30 @@ These repositories demonstrate:
 - Zero-knowledge proof generation patterns
 - Docker stack configuration with compatible versions (testkit-js)
 - Toolkit command patterns for deployment and contract calls
+- Contract inspection for circuit discovery (midnight-contracts/test-runner)
+
+## Contract Inspection Pattern
+
+Compiled Compact contracts expose their circuits through the generated JavaScript module. The `midnight-contracts/test-runner` demonstrates the standard pattern for inspecting circuits:
+
+```typescript
+import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
+
+// 1. Dynamic import of compiled contract module
+const modulePath = `./managed/${contractName}/contract/index.cjs`;
+const { Contract } = await import(`file://${modulePath}?update=${Date.now()}`);
+
+// 2. Instantiate the contract
+const contractInstance = new Contract({});
+
+// 3. Access circuits directly
+const circuits = Object.keys(contractInstance.impureCircuits);
+
+// 4. Or use the utility function
+const circuitIds = getImpureCircuitIds(contractInstance);
+```
+
+This pattern is useful for:
+- Generating TypeScript factory types from compiled contracts
+- Deriving available entry points for test harnesses
+- Building contract introspection tooling

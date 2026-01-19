@@ -41,17 +41,25 @@ describe('typescript-generator', () => {
     });
 
     it('should parse contract artifacts from directory structure', async () => {
-      // Create a mock contract artifact structure
+      // Create a mock contract artifact structure with Contract class
+      // This matches the structure output by the Compact compiler
       const counterDir = join(testDir, 'Counter', 'contract');
       await mkdir(counterDir, { recursive: true });
       await writeFile(
         join(counterDir, 'index.cjs'),
         `
-module.exports = {
-  witnesses: { localWitness: function() {} },
-  impureCircuits: { increment: function() {}, decrement: function() {} },
-  initialState: function() {}
-};
+class Contract {
+  constructor(config) {
+    this.impureCircuits = {
+      increment: function() {},
+      decrement: function() {}
+    };
+    this.witnesses = {
+      localWitness: function() {}
+    };
+  }
+}
+module.exports = { Contract };
         `
       );
 
@@ -60,6 +68,14 @@ module.exports = {
       expect(artifacts).toHaveLength(1);
       expect(artifacts[0]?.name).toBe('Counter');
       expect(artifacts[0]?.circuits.length).toBeGreaterThan(0);
+      // Verify impure circuits were found
+      const impureCircuits = artifacts[0]?.circuits.filter(c => c.isImpure);
+      expect(impureCircuits?.length).toBe(2);
+      expect(impureCircuits?.map(c => c.name).sort()).toEqual(['decrement', 'increment']);
+      // Verify witnesses were found
+      const witnesses = artifacts[0]?.circuits.filter(c => !c.isImpure);
+      expect(witnesses?.length).toBe(1);
+      expect(witnesses?.[0]?.name).toBe('localWitness');
     });
   });
 
@@ -177,12 +193,20 @@ module.exports = {
     });
 
     it('should generate files for contracts', async () => {
-      // Create mock artifact
+      // Create mock artifact with Contract class structure
       const counterDir = join(testDir, 'Counter', 'contract');
       await mkdir(counterDir, { recursive: true });
       await writeFile(
         join(counterDir, 'index.cjs'),
-        'module.exports = { witnesses: {}, impureCircuits: { test: function() {} } };'
+        `
+class Contract {
+  constructor(config) {
+    this.impureCircuits = { test: function() {} };
+    this.witnesses = {};
+  }
+}
+module.exports = { Contract };
+        `
       );
 
       const outputDir = join(testDir, 'types');
