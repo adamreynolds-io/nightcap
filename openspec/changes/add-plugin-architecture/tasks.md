@@ -1,15 +1,15 @@
 ## 1. Plugin System Core
-- [ ] 1.1 Define plugin interface and lifecycle hooks
-- [ ] 1.2 Implement plugin loader from config
-- [ ] 1.3 Support npm package plugins
-- [ ] 1.4 Support local file plugins
-- [ ] 1.5 Implement plugin dependency resolution
+- [x] 1.1 Define plugin interface and lifecycle hooks
+- [x] 1.2 Implement plugin loader from config
+- [x] 1.3 Support npm package plugins
+- [x] 1.4 Support local file plugins
+- [x] 1.5 Implement plugin dependency resolution
 
 ## 2. Plugin Capabilities
-- [ ] 2.1 Allow plugins to register tasks
-- [ ] 2.2 Allow plugins to extend configuration schema
-- [ ] 2.3 Allow plugins to add runtime extensions
-- [ ] 2.4 Allow plugins to override built-in tasks
+- [x] 2.1 Allow plugins to register tasks
+- [x] 2.2 Allow plugins to extend configuration schema
+- [x] 2.3 Allow plugins to add runtime extensions
+- [x] 2.4 Allow plugins to override built-in tasks
 - [ ] 2.5 Provide inter-plugin communication hooks
 
 ## 3. midnight-js Plugin
@@ -34,11 +34,11 @@
 
 ## 6. Plugin Development Tools
 - [ ] 6.1 Create plugin starter template
-- [ ] 6.2 Document plugin development guide
-- [ ] 6.3 Provide type definitions for plugin authors
+- [x] 6.2 Document plugin development guide
+- [x] 6.3 Provide type definitions for plugin authors
 - [ ] 6.4 Add plugin testing utilities
 
 ## 7. Testing
-- [ ] 7.1 Unit tests for plugin loading
+- [x] 7.1 Unit tests for plugin loading
 - [ ] 7.2 Integration tests for midnight-js plugin
 - [ ] 7.3 E2E tests for plugin task extension
