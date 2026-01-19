@@ -15,6 +15,12 @@ import {
   resolveCompilationOrder,
   checkVersionCompatibility,
 } from '../../compiler/dependency-resolver.js';
+import { generateTypeScript } from '../../compiler/typescript-generator.js';
+import {
+  parseCompilationError,
+  formatError,
+  type ErrorFormat,
+} from '../../compiler/error-formatter.js';
 
 /**
  * Cache entry for a compiled contract
@@ -132,11 +138,23 @@ export const compileTask: TaskDefinition = {
       description: 'Force recompilation, ignoring cache',
       default: false,
     },
+    'generate-types': {
+      type: 'boolean',
+      description: 'Generate TypeScript factory helpers for contracts',
+      default: false,
+    },
+    'error-format': {
+      type: 'string',
+      description: 'Error output format: human, gcc, json, vscode',
+      default: 'human',
+    },
   },
 
   async action(context: TaskContext): Promise<void> {
     const cwd = process.cwd();
     const force = context.params['force'] === true;
+    const generateTypes = context.params['generateTypes'] === true;
+    const errorFormat = (context.params['errorFormat'] as ErrorFormat) ?? 'human';
 
     // Get source and artifact directories from config
     const sourcesDir = join(cwd, context.config.paths?.sources ?? 'contracts');
@@ -276,8 +294,18 @@ export const compileTask: TaskDefinition = {
         logger.error(`Failed to compile ${contractName}:`);
         if (result.errors) {
           for (const error of result.errors) {
-            const formatted = await formatCompilationErrorWithSource(error, contract.path);
-            logger.log(formatted);
+            // Use configured error format
+            if (errorFormat === 'human') {
+              const formatted = await formatCompilationErrorWithSource(error, contract.path);
+              logger.log(formatted);
+            } else {
+              const parsed = parseCompilationError(error);
+              if (parsed) {
+                logger.log(formatError(parsed, errorFormat, cwd));
+              } else {
+                logger.log(error);
+              }
+            }
           }
         }
       }
@@ -295,6 +323,31 @@ export const compileTask: TaskDefinition = {
       logger.success(`Compiled ${compiled} contract(s)`);
       if (skipped > 0) {
         logger.info(`Skipped ${skipped} unchanged contract(s)`);
+      }
+
+      // Generate TypeScript factory helpers if requested
+      if (generateTypes) {
+        logger.info('Generating TypeScript helpers...');
+        const typesDir = join(cwd, context.config.paths?.types ?? 'typechain');
+        const result = await generateTypeScript(artifactsDir, {
+          outputDir: typesDir,
+          generateFactories: true,
+          generateDeclarations: true,
+          includeMidnightTypes: true,
+        });
+
+        if (result.errors.length > 0) {
+          for (const err of result.errors) {
+            logger.warn(err);
+          }
+        }
+
+        if (result.generated.length > 0) {
+          logger.success(`Generated ${result.generated.length} TypeScript file(s)`);
+          for (const file of result.generated) {
+            logger.debug(`  ${file}`);
+          }
+        }
       }
     } else if (skipped > 0) {
       logger.info('Nothing to compile (all contracts up to date)');

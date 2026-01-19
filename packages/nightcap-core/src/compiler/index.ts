@@ -11,3 +11,24 @@ export {
   checkVersionCompatibility,
 } from './dependency-resolver.js';
 export type { ContractInfo, CompilationOrder } from './dependency-resolver.js';
+export {
+  parseContractArtifacts,
+  generateContractFactory,
+  generateContractDeclaration,
+  generateIndexFile,
+  generateTypeScript,
+} from './typescript-generator.js';
+export type {
+  ContractMetadata,
+  CircuitInfo,
+  ParameterInfo,
+  GeneratorOptions,
+} from './typescript-generator.js';
+export {
+  parseCompilationError,
+  parseCompilerOutput,
+  formatError,
+  formatErrors,
+  formatErrorWithSource,
+} from './error-formatter.js';
+export type { CompilationError, ErrorFormat } from './error-formatter.js';

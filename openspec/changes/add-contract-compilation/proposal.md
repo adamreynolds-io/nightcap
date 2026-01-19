@@ -1,6 +1,6 @@
 # Change: Add Compact Contract Compilation
 
-**Status:** 🟡 Mostly Complete (TypeScript factory generation pending)
+**Status:** ✅ Complete
 
 ## Why
 Developers need to compile Compact contracts into deployable artifacts. Like Hardhat's `compile` task for Solidity, Nightcap should provide seamless contract compilation with dependency resolution, caching, and TypeScript type generation for type-safe contract interactions.
@@ -16,11 +16,9 @@ Developers need to compile Compact contracts into deployable artifacts. Like Har
 - ✅ Added compilation error formatting with source location highlighting
 - ✅ Added `nightcap clean` task for artifact and cache cleanup
 - ✅ Added `nightcap compiler:list` and `nightcap compiler:install` commands
-
-## Remaining Work
-- [ ] Create typed contract factories from compiler output
-- [ ] Integrate with midnight-js types for contract interaction
-- [ ] IDE integration for error reporting (LSP support)
+- ✅ Added TypeScript factory generation (`--generate-types` flag)
+- ✅ Integrated with midnight-js types for contract interaction
+- ✅ Added IDE error formats (`--error-format gcc/json/vscode`)
 
 ## Impact
 - Affected specs: `contract-compilation` (new capability)

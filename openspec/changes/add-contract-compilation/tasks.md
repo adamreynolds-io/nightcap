@@ -24,9 +24,9 @@
 
 ## 4. TypeScript Integration
 - [x] 4.1 Generate TypeScript declaration files for contracts
-- [ ] 4.2 Create typed contract factories
-- [ ] 4.3 Integrate with midnight-js types
-- [ ] 4.4 Support IDE autocomplete for contract methods
+- [x] 4.2 Create typed contract factories
+- [x] 4.3 Integrate with midnight-js types
+- [x] 4.4 Support IDE autocomplete for contract methods
 
 ## 5. Caching
 - [x] 5.1 Implement compilation cache based on source hash
@@ -38,7 +38,7 @@
 - [x] 6.1 Format compilation errors with source context
 - [x] 6.2 Highlight error location in source file
 - [x] 6.3 Provide actionable error messages
-- [ ] 6.4 Support IDE integration for error reporting
+- [x] 6.4 Support IDE integration for error reporting (--error-format gcc/json/vscode)
 
 ## 7. Testing
 - [x] 7.1 Unit tests for compilation pipeline

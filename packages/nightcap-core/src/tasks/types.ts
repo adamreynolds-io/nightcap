@@ -77,6 +77,8 @@ export interface NightcapConfig {
     sources?: string;
     /** Directory for deployment scripts */
     deploy?: string;
+    /** Directory for generated TypeScript types */
+    types?: string;
   };
 }
 
