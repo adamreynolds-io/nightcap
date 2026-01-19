@@ -1,21 +1,59 @@
 # NIGHTCAP
 
-Nightcap is [Midnight Foundation](https://github.com/midnightntwrk)'s *proposed* Midnight development environment for professionals. Designed to simplify building, testing, and deploying smart contracts and dApps on the Midnight blockchain. Inspired by Ethereum's [Hardhat](https://hardhat.org/) (and many others), Nightcap aims to provide a flexible environment for Midnight developers with features tailored to the unique aspects of the Midnight network.
+Nightcap is [Midnight Foundation](https://github.com/midnightntwrk)'s Midnight development environment for professionals. Designed to simplify building, testing, and deploying smart contracts and dApps on the Midnight blockchain. Inspired by Ethereum's [Hardhat](https://hardhat.org/) (and many others), Nightcap provides a flexible environment for Midnight developers with features tailored to the unique aspects of the Midnight network.
 
-## PROPOSED FEATURES
-Nightcap is a work in progress, but here are some of the proposed features:
+## Quick Start
 
-- **Local Midnight node simulation** for rapid development and testing of Compact Contracts.
-- **Automated contract compilation, deployment, and verification** workflows.
-- **Plugin architecture** to extend functionality for Midnight-specific use cases and support custom plugins.
-- **Scriptable tasks** for common developer operations, including scaffolding TypeScript dApps.
-- **Integration with Midnight's security and compliance tooling.**
+```bash
+# Install
+pnpm add -D @nightcap/core
 
-## BE PART OF THE JOURNEY
+# Create a project
+npx nightcap init
+
+# Start local network
+npx nightcap node
+
+# Compile contracts
+npx nightcap compile
+
+# Deploy
+npx nightcap deploy
+```
+
+## Features
+
+- **Local Midnight node simulation** for rapid development and testing of Compact Contracts
+- **Automated contract compilation, deployment, and verification** workflows
+- **Plugin architecture** to extend functionality for Midnight-specific use cases
+- **Scriptable tasks** for common developer operations
+- **TypeScript-first** with full type safety
+- **Docker-based** local network with snapshot/restore capability
+
+## Documentation
+
+See the [docs/](./docs/) folder for comprehensive documentation:
+
+- [Getting Started](./docs/getting-started.md) - Installation and your first project
+- [Command Reference](./docs/commands.md) - All CLI commands and options
+- [Configuration](./docs/configuration.md) - Config file reference
+- [Plugin Development](./docs/plugins.md) - Creating Nightcap plugins
+- [Troubleshooting](./docs/troubleshooting.md) - Common issues and solutions
+
+## Requirements
+
+- Node.js 20 or higher
+- Docker (for local network)
+- pnpm (recommended)
+
+Run `nightcap doctor` to verify your environment.
+
+## Be Part of the Journey
 
 Nightcap is an open source project maintained by the [Midnight Foundation](https://midnightfoundation.io/). We welcome contributions from the community to help improve and expand its capabilities.
 
-## REFERENCE ECOSYSTEMS
+## Reference Ecosystems
+
 - [Ethereum Hardhat](https://hardhat.org/)
 - [Ethereum Foundry](https://getfoundry.sh/)
 
