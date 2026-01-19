@@ -1,3 +1,5 @@
+**Status:** ✅ Implemented
+
 ## Context
 Nightcap needs a CLI framework that balances simplicity with extensibility. The midnight-node toolkit already provides comprehensive blockchain operations (transactions, wallets, contracts, proofs), but lacks a developer-friendly interface for iterative development workflows.
 
@@ -267,6 +269,8 @@ export default config;
 - **Risk:** Task system complexity overwhelming for simple projects
   - *Mitigation:* Sensible defaults, minimal config for basic usage
 
-## Open Questions
-- Should we support `nightcap.config.js` for non-TypeScript projects?
-- What's the minimum toolkit version to support?
+## Open Questions (Resolved)
+- ✅ Should we support `nightcap.config.js` for non-TypeScript projects?
+  - **Yes:** Implemented support for `.ts`, `.js`, and `.mjs` config files
+- ✅ What's the minimum toolkit version to support?
+  - **Resolved:** Using version sets - Nightcap ships tested compatible versions (node, toolkit, indexer, proof-server)
