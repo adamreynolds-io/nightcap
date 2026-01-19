@@ -1,0 +1,12 @@
+/*
+ * BadSyntax.compact
+ * Invalid contract for testing error handling
+ */
+
+pragma language_version >= 0.14;
+
+// Syntax error: missing type
+export ledger foo;
+
+// Syntax error: missing closing paren
+export circuit broken( {

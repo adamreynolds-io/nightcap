@@ -1,0 +1,21 @@
+/*
+ * Token.compact
+ * A simple token contract (similar to Counter)
+ */
+
+pragma language_version >= 0.14;
+
+import CompactStandardLibrary;
+
+// Token balance ledger
+export ledger balance: Counter;
+
+// Add to balance
+export circuit add(): [] {
+  balance.increment(1);
+}
+
+// Subtract from balance
+export circuit subtract(): [] {
+  balance.decrement(1);
+}

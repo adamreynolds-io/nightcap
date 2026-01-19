@@ -1,0 +1,9 @@
+/*
+ * Math.compact
+ * Helper library for mathematical operations
+ */
+
+pragma language_version >= 0.14;
+
+// A simple constant for testing
+const MAX_VALUE: Uint<64> = 1000000;
