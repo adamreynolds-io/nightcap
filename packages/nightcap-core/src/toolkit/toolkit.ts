@@ -150,24 +150,33 @@ export class Toolkit {
   }
 
   /**
-   * Deploy a contract
+   * Deploy a contract using generate-txs contract-simple deploy
+   *
+   * Reference: https://github.com/midnightntwrk/midnight-node/tree/main/scripts/tests
    */
   async deploy(
     input: DeployInput,
     endpoint: ToolkitEndpoint,
     options: ToolkitCommandOptions = {}
   ): Promise<ToolkitResult<DeployResult>> {
-    const command = ['contract-simple', 'deploy'];
+    // Convert HTTP URLs to WebSocket if needed
+    const wsEndpoint = this.toWebSocketEndpoint(endpoint);
 
-    // Add endpoint args
-    command.push(...this.buildEndpointArgs(endpoint, 'source'));
-    command.push(...this.buildEndpointArgs(endpoint, 'destination'));
+    // Build command: generate-txs contract-simple deploy
+    const command = ['generate-txs', 'contract-simple', 'deploy'];
 
-    // Add artifact path
-    command.push('--artifact', input.artifactPath);
+    // Add source and destination (WebSocket URLs)
+    command.push('-s', wsEndpoint.nodeUrl);
+    command.push('-d', wsEndpoint.nodeUrl);
 
-    // Add output format
-    command.push('--output', 'json');
+    // Add artifact/contract config path
+    command.push('--contract-config', input.artifactPath);
+
+    // Add prover URL
+    command.push('--prover', endpoint.proofServerUrl);
+
+    // Add indexer URL
+    command.push('--indexer', endpoint.indexerUrl);
 
     // Add constructor args if provided
     if (input.constructorArgs && input.constructorArgs.length > 0) {
@@ -182,25 +191,55 @@ export class Toolkit {
   }
 
   /**
-   * Call a contract method
+   * Convert HTTP endpoint URLs to WebSocket URLs
+   */
+  private toWebSocketEndpoint(endpoint: ToolkitEndpoint): ToolkitEndpoint {
+    const toWs = (url: string): string => {
+      if (url.startsWith('ws://') || url.startsWith('wss://')) {
+        return url;
+      }
+      // Convert http:// to ws:// and https:// to wss://
+      return url.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+    };
+
+    return {
+      nodeUrl: toWs(endpoint.nodeUrl),
+      indexerUrl: endpoint.indexerUrl, // Keep HTTP for indexer
+      proofServerUrl: endpoint.proofServerUrl, // Keep HTTP for proof server
+    };
+  }
+
+  /**
+   * Call a contract method using generate-txs contract-simple call
+   *
+   * Reference: https://github.com/midnightntwrk/midnight-node/tree/main/scripts/tests
    */
   async call(
     input: CallInput,
     endpoint: ToolkitEndpoint,
     options: ToolkitCommandOptions = {}
   ): Promise<ToolkitResult<CallResult>> {
-    const command = ['contract-simple', 'call'];
+    // Convert HTTP URLs to WebSocket if needed
+    const wsEndpoint = this.toWebSocketEndpoint(endpoint);
 
-    // Add endpoint args
-    command.push(...this.buildEndpointArgs(endpoint, 'source'));
-    command.push(...this.buildEndpointArgs(endpoint, 'destination'));
+    // Build command: generate-txs contract-simple call
+    const command = ['generate-txs', 'contract-simple', 'call'];
 
-    // Add contract address and method
-    command.push('--address', input.contractAddress);
-    command.push('--method', input.method);
+    // Add source and destination (WebSocket URLs)
+    command.push('-s', wsEndpoint.nodeUrl);
+    command.push('-d', wsEndpoint.nodeUrl);
 
-    // Add output format
-    command.push('--output', 'json');
+    // Add contract address
+    command.push('--contract-address', input.contractAddress);
+
+    // Add call key (method name)
+    command.push('--call-key', input.method);
+
+    // Add prover URL
+    command.push('--prover', endpoint.proofServerUrl);
+
+    // Add indexer URL
+    command.push('--indexer', endpoint.indexerUrl);
 
     // Add args if provided
     if (input.args && input.args.length > 0) {

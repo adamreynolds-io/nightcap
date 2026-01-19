@@ -20,6 +20,10 @@ import {
   compilerListTask,
   compilerInstallTask,
 } from './compile.js';
+import {
+  deployTask,
+  deploymentsTask,
+} from './deploy.js';
 
 /**
  * Register all built-in tasks with the registry
@@ -44,4 +48,8 @@ export function registerBuiltinTasks(registry: TaskRegistry): void {
   registry.register(cleanTask);
   registry.register(compilerListTask);
   registry.register(compilerInstallTask);
+
+  // Deploy tasks
+  registry.register(deployTask);
+  registry.register(deploymentsTask);
 }

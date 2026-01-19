@@ -130,6 +130,69 @@ Install (stable): `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midn
 | `localnet` | Full stack: node + toolkit + indexer + proof-server |
 | `devnet`, `qanet`, `preview`, `preprod`, `mainnet` | Toolkit only (connects to remote infra) |
 
+## Toolkit Command Reference
+
+The `midnight-node-toolkit` Docker image provides CLI commands for contract operations.
+
+**Reference scripts:** [github.com/midnightntwrk/midnight-node/tree/main/scripts/tests](https://github.com/midnightntwrk/midnight-node/tree/main/scripts/tests)
+
+### Contract Deployment
+```bash
+# Generate deploy intent
+generate-intent deploy -c /path/to/contract.config.ts \
+  --coin-public <address> \
+  --output-intent <file> \
+  --output-private-state <file> \
+  --output-zswap-state <file> \
+  <amount>
+
+# Send intent to network
+send-intent \
+  --intent-file <file> \
+  --compiled-contract-dir <path>
+
+# Or use simplified contract-simple commands
+toolkit generate-txs contract-simple deploy -s ws://node -d ws://node
+```
+
+### Contract Calls
+```bash
+# Generate circuit call intent
+generate-intent circuit -c /path/to/contract.config.ts \
+  --coin-public <address> \
+  --input-onchain-state <file> \
+  --input-private-state <file> \
+  --contract-address <address> \
+  --output-intent <file> \
+  --output-private-state <file> \
+  --output-zswap-state <file> \
+  <function_name>
+
+# Or use simplified command
+toolkit generate-txs contract-simple call --call-key <key> -s ws://node -d ws://node
+```
+
+### Contract State
+```bash
+# Get contract address from deploy output
+toolkit contract-address --src-file <file> --tagged
+
+# Fetch contract state
+toolkit contract-state --contract-address <address> --dest-file <file>
+```
+
+### Data Fetching
+```bash
+toolkit fetch --fetch-cache redb:.cache/fetch/data.db -s ws://node
+toolkit fetch --fetch-cache inmemory -s ws://node
+toolkit fetch --fetch-cache postgres://user:pass@host:port/db -s ws://node
+```
+
+### Common Flags
+- `-s`, `--source`: Source node WebSocket URL (ws://...)
+- `-d`, `--destination`: Destination node WebSocket URL
+- `--rng-seed`: Random seed for deterministic operations
+
 ## Reference Examples
 
 | Repository | Purpose |
@@ -137,6 +200,7 @@ Install (stable): `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midn
 | [example-counter](https://github.com/midnightntwrk/example-counter) | Reference dApp with Compact contract, CLI tool, and basic project structure |
 | [example-bboard](https://github.com/midnightntwrk/example-bboard) | Bulletin board dApp with Compact contract, CLI, and React web UI |
 | [midnight-js/testkit-js](https://github.com/midnightntwrk/midnight-js/tree/main/testkit-js) | Official Docker stack configuration for local development |
+| [midnight-node/scripts/tests](https://github.com/midnightntwrk/midnight-node/tree/main/scripts/tests) | Toolkit E2E test scripts showing command patterns |
 
 These repositories demonstrate:
 - Valid Compact contract syntax (compatible with compactc 0.25.0+)
@@ -145,3 +209,4 @@ These repositories demonstrate:
 - Web UI integration with Lace wallet (example-bboard)
 - Zero-knowledge proof generation patterns
 - Docker stack configuration with compatible versions (testkit-js)
+- Toolkit command patterns for deployment and contract calls
