@@ -37,7 +37,7 @@
   "devDependencies": {
     "@nightcap/core": "workspace:*",
     "@nightcap/plugin-midnight-js": "workspace:*",
-    "@types/node": "^20.0.0",
+    "@types/node": "^25.0.9",
     "typescript": "^5.3.0"
   },
   "engines": {
